@@ -1,3 +1,6 @@
 [submodule "turingdb-sdk-cpp"]
 	path = turingdb-sdk-cpp
 	url = git@github.com:turing-db/turingdb-sdk-cpp.git
+[submodule "turingdb"]
+	path = turingdb
+	url = git@github.com:turing-db/turingdb.git
