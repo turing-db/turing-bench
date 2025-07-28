@@ -87,10 +87,8 @@ execute_process(
 )
 
 add_subdirectory(turingdb-sdk-cpp)
-add_subdirectory(turingdb)
 
 add_executable(turing-bench main.cpp)
 
 target_link_libraries(turing-bench PRIVATE
-   turing_db_s
    turing_client_cpp_s)
