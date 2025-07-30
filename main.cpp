@@ -1,6 +1,11 @@
 #include <spdlog/spdlog.h>
 
 #include "TuringClient.h"
+#include "driver/BenchmarkDriver.h"
+
+const std::string GRAPH_NAME = "simpledb";
+
+using namespace bm;
 
 int main () {
     using namespace turingClient;
@@ -11,13 +16,15 @@ int main () {
     Col ret{};
 
     auto query = [&client, &ret](std::string q) {
-        bool res = client.query(q, "simpledb", ret);
+        bool res = client.query(q, GRAPH_NAME, ret);
         if (!res) {
             spdlog::error("Failed to query : {}", q);
         } else {
             spdlog::info("Successful query");
         }
     };
+
+    BenchmarkDriver dr(GRAPH_NAME, client);
 
     query("match (n) return n");
 
