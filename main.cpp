@@ -1,4 +1,4 @@
-#include <stdexcept>
+#include <spdlog/spdlog.h>
 
 #include "TuringClient.h"
 
@@ -9,9 +9,19 @@ int main () {
     TuringClient client("http://127.0.0.1:6666");
 
     Col ret{};
-    bool res = client.query("match (n) return n", "simpledb", ret);
 
-    if (!res) {
-        throw std::runtime_error("Failed to query");
-    }
+    auto query = [&client, &ret](std::string q) {
+        bool res = client.query(q, "simpledb", ret);
+        if (!res) {
+            spdlog::error("Failed to query : {}", q);
+        } else {
+            spdlog::info("Successful query");
+        }
+    };
+
+    query("match (n) return n");
+
+    query("CHANGE NEW");
+    
+    query("create (n:NewNode{name=\"cyrus\"})");
 }
