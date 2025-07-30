@@ -91,4 +91,6 @@ add_subdirectory(turingdb-sdk-cpp)
 add_executable(turing-bench main.cpp)
 
 target_link_libraries(turing-bench PRIVATE
-   turing_client_cpp_s)
+   turing_client_cpp_s
+   argparse
+)
