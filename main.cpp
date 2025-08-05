@@ -37,7 +37,7 @@ int main (int argc, char** argv) {
         }
     
     TuringClient client("http://127.0.0.1:6666");
-    BenchmarkDriver dr("simpledb", client);
+    BenchmarkDriver dr("default", client);
     bool setupResult = dr.setup(buildFile, queryFile);
 
     if (!setupResult) {

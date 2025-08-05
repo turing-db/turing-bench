@@ -71,6 +71,7 @@ private:
                 if (!res) {
                     spdlog::error("Query failed to execute : {}", q);
                     spdlog::error(_cl.getError().fmtMessage());
+                } else {
                 }
             }
         }
