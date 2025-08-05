@@ -45,5 +45,7 @@ int main (int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    dr.run<true, true, true>();
+    spdlog::info("Running queries...");
+    dr.run<true, false, false>();
+    spdlog::info("Queries ran.");
 }

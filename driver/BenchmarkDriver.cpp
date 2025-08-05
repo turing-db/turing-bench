@@ -28,10 +28,12 @@ void BenchmarkDriver::parseQueries(std::vector<std::string>& queries,
 }
 
 bool BenchmarkDriver::setup(const std::string& buildFile, const std::string& queryFile) {
+    spdlog::info("Building graph from CYPHER queries in file {}.", buildFile);
     if (!buildGraph(buildFile)) {
         return false;
     }
 
+    spdlog::info("Parsing CYPHER queries in file {}.", queryFile);
     parseQueries(_queries, queryFile);
     if (_queries.empty()) {
         spdlog::error("No queries provided in file {}.", queryFile);
