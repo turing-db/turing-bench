@@ -27,62 +27,55 @@ void BenchmarkDriver::parseQueries(std::vector<std::string>& queries,
     }
 }
 
-void BenchmarkDriver::setup(std::vector<std::string>& queries,
-                            const std::string& filepath) {
-
-    if (filepath.empty()) {
-        throw std::runtime_error("No filepath provided");
+bool BenchmarkDriver::setup(const std::string& buildFile, const std::string& queryFile) {
+    if (!buildGraph(buildFile)) {
+        return false;
     }
 
-    // Generate queries and their types
-    parseQueries(queries, filepath);
-
-    if (queries.empty()) {
-        throw std::runtime_error("No queries provided");
+    parseQueries(_queries, queryFile);
+    if (_queries.empty()) {
+        spdlog::error("No queries provided in file {}.", queryFile);
+        return false;
     }
+    return true;
 }
 
-
-void BenchmarkDriver::setup(std::vector<std::string>& queries,
-                            const std::string& buildFile, const std::string& queryFile) {
-    // Generate the CREATE queries
+bool BenchmarkDriver::buildGraph(const std::string& buildFile) {
+    // Parse the CREATE queries
     std::vector<std::string> buildQueries;
     parseQueries(buildQueries, buildFile);
     if (buildQueries.empty()) {
         spdlog::error("No build queries provided.");
-        return;
+        return false;
     }
 
-    // Build the graph
-    using Col = std::vector<std::unique_ptr<turingClient::TypedColumn>>;
-    [[maybe_unused]] Col ret;
-
+    // Build the graph from parsed queries
+    // TODO: CREATE GRAPH query
     query("change new");
     auto changeStr = std::to_string(_changeNo);
-    for (const auto& q : buildQueries) {
-        if (!q.starts_with("CREATE")) {
-            spdlog::error("Build queries contain non-create query : {}", q);
+
+    for (const auto& createQuery : buildQueries) {
+        if (!createQuery.starts_with("CREATE")) {
+            spdlog::error("Build queries contain non-create query : {}", createQuery);
+            return false;
         }
-        query(q, changeStr); // XXX: Assumes first change in graph
+
+        bool res = query(createQuery, changeStr);
+        if (!res) {
+            spdlog::error("Failed to run build query: {}", createQuery);
+            spdlog::error(_cl.getError().fmtMessage());
+            return false;
+        }
     }
+
     query("change submit", changeStr);
     _changeNo++;
-
-    parseQueries(queries, queryFile);
-    if (queries.empty()) {
-        spdlog::error("No build queries provided.");
-        return;
-    }
-
+    return true;
 }
 
 bool BenchmarkDriver::query(const std::string& q, const std::string& change) {
+    // NOTE: This has to be reconstructed each time otherwise json error..
     std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;
     bool res = _cl.query(q, _graphName, ret, "", change);
-    if (!res) {
-        spdlog::error("Error running: {}", q);
-        spdlog::error(_cl.getError().fmtMessage());
-    }
-    spdlog::info("Ran {}", q);
     return res;
 }
