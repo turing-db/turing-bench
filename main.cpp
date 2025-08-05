@@ -2,6 +2,7 @@
 #include <argparse.hpp>
 
 #include "TuringClient.h"
+#include "TypedColumn.h"
 #include "driver/BenchmarkDriver.h"
 
 const std::string GRAPH_NAME = "benchmarkdb";
@@ -15,7 +16,6 @@ int main (int argc, char** argv) {
         std::string graph{};
         std::string buildFile{};
         std::string queryFile{};
-
         ap.add_argument("-b", "--build")
             .nargs(1)
             .store_into(buildFile)
@@ -41,17 +41,10 @@ int main (int argc, char** argv) {
     TuringClient client("http://127.0.0.1:6666");
 
     Col ret{};
-    std::vector<std::string> graphs;
 
-    client.listAvailableGraphs(graphs);
-
-    for (const auto& graph : graphs) {
-        spdlog::info(graph);
-    }
-
-
-    auto query = [&client, &ret](std::string q) {
-        bool res = client.query(q, "simpledb", ret);
+    /*
+    auto query = [&client, &ret](std::string&& q, std::string&& change="") {
+        bool res = client.query(q, "simpledb", ret, "", change);
         if (!res) {
             spdlog::error("Failed to query : {}", q);
             spdlog::error(client.getError().fmtMessage());
@@ -59,14 +52,9 @@ int main (int argc, char** argv) {
             spdlog::info("Successful query");
         }
     };
+    */
 
     BenchmarkDriver dr("simpledb", client);
-
-    query("match (n) return n");
-
-    query("CHANGE NEW");
-
-    query("checkout change-0");
-    
-    query("create (n:NewNode{name=\"cyrus\"})");
+    std::vector<std::string> queries;
+    dr.setup(queries, buildFile, queryFile);
 }

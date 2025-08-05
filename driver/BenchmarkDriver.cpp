@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "TuringClient.h"
+#include "TypedColumn.h"
 
 using namespace bm;
 
@@ -42,10 +43,10 @@ void BenchmarkDriver::setup(std::vector<std::string>& queries,
 }
 
 
-void BenchmarkDriver::setup(std::vector<std::string>& buildQueries,
-                            std::vector<std::string>& queries,
+void BenchmarkDriver::setup(std::vector<std::string>& queries,
                             const std::string& buildFile, const std::string& queryFile) {
     // Generate the CREATE queries
+    std::vector<std::string> buildQueries;
     parseQueries(buildQueries, buildFile);
     if (buildQueries.empty()) {
         spdlog::error("No build queries provided.");
@@ -53,12 +54,19 @@ void BenchmarkDriver::setup(std::vector<std::string>& buildQueries,
     }
 
     // Build the graph
+    using Col = std::vector<std::unique_ptr<turingClient::TypedColumn>>;
+    [[maybe_unused]] Col ret;
+
+    query("change new");
+    auto changeStr = std::to_string(_changeNo);
     for (const auto& q : buildQueries) {
         if (!q.starts_with("CREATE")) {
             spdlog::error("Build queries contain non-create query : {}", q);
         }
-        // QueryStatus res = _db.query(q, _graphName, &_mem, commit.value(), changeRes.value());
+        query(q, changeStr); // XXX: Assumes first change in graph
     }
+    query("change submit", changeStr);
+    _changeNo++;
 
     parseQueries(queries, queryFile);
     if (queries.empty()) {
@@ -66,12 +74,15 @@ void BenchmarkDriver::setup(std::vector<std::string>& buildQueries,
         return;
     }
 
-    if (queries.empty()) {
-        throw std::runtime_error("No queries provided");
-    }
 }
 
-bool BenchmarkDriver::query(std::string_view q) {
+bool BenchmarkDriver::query(const std::string& q, const std::string& change) {
     std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;
-    return _cl.query(q, _graphName, ret);
+    bool res = _cl.query(q, _graphName, ret, "", change);
+    if (!res) {
+        spdlog::error("Error running: {}", q);
+        spdlog::error(_cl.getError().fmtMessage());
+    }
+    spdlog::info("Ran {}", q);
+    return res;
 }

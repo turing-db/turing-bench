@@ -90,6 +90,12 @@ add_subdirectory(turingdb-sdk-cpp)
 
 add_executable(turing-bench main.cpp)
 
+target_sources(turing-bench
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/driver/BenchmarkDriver.cpp
+)
+
+
 target_link_libraries(turing-bench PRIVATE
    turing_client_cpp_s
    argparse
