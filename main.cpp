@@ -41,21 +41,32 @@ int main (int argc, char** argv) {
     TuringClient client("http://127.0.0.1:6666");
 
     Col ret{};
+    std::vector<std::string> graphs;
+
+    client.listAvailableGraphs(graphs);
+
+    for (const auto& graph : graphs) {
+        spdlog::info(graph);
+    }
+
 
     auto query = [&client, &ret](std::string q) {
-        bool res = client.query(q, GRAPH_NAME, ret);
+        bool res = client.query(q, "simpledb", ret);
         if (!res) {
             spdlog::error("Failed to query : {}", q);
+            spdlog::error(client.getError().fmtMessage());
         } else {
             spdlog::info("Successful query");
         }
     };
 
-    BenchmarkDriver dr(GRAPH_NAME, client);
+    BenchmarkDriver dr("simpledb", client);
 
     query("match (n) return n");
 
     query("CHANGE NEW");
+
+    query("checkout change-0");
     
     query("create (n:NewNode{name=\"cyrus\"})");
 }
