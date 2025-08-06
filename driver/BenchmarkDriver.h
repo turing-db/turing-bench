@@ -1,4 +1,5 @@
 #include <chrono>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -10,12 +11,20 @@ namespace bm {
 
 class BenchmarkDriver {
 public:
-    struct BenchmarkResult {};
+    using TimeUnit = std::chrono::microseconds;
 
-    BenchmarkDriver(const std::string& graph, turingClient::TuringClient& cl)
+    struct BenchmarkResult {
+        std::vector<TimeUnit> totalTimes;
+        std::map<std::string, std::vector<TimeUnit>> queryTimes;
+    };
+
+    BenchmarkDriver(const std::string& graph, turingClient::TuringClient& cl,
+                    uint32_t runs)
         : _graphName(graph),
-        _cl(cl)
+          _cl(cl),
+          _runs(runs)
     {
+        _res.totalTimes.reserve(runs);
     }
 
     bool setup(const std::string& buildFile, const std::string& queryFile);
@@ -25,11 +34,13 @@ public:
     template <bool totalTime, bool perQuery, bool debug>
     void run();
 
-private:
-    using TimeUnit = std::chrono::microseconds;
+    BenchmarkResult getResults() { return _res; }
 
+private:
     std::string _graphName;
     turingClient::TuringClient& _cl;
+    BenchmarkResult _res;
+    uint32_t _runs {1};
 
     std::vector<std::string> _queries;
 
@@ -47,16 +58,14 @@ void BenchmarkDriver::run() {
     using Clock = high_resolution_clock;
     using Timestamp = time_point<high_resolution_clock>;
 
-    Timestamp pre;
-    Timestamp post;
-    std::vector<TimeUnit> queryTimes(_queries.size());
+    Timestamp totalTimer;
     Timestamp queryTimer;
 
     if constexpr (totalTime) {
-        pre = Clock::now();
+        totalTimer = Clock::now();
     }
 
-    for (size_t i {0}; const auto& q : _queries) {
+    for (const auto& q : _queries) {
         if constexpr (perQuery) {
             queryTimer = Clock::now();
         }
@@ -64,7 +73,7 @@ void BenchmarkDriver::run() {
         bool res = query(q);
 
         if constexpr (perQuery) {
-            queryTimes[i] = duration_cast<TimeUnit>(Clock::now() - queryTimer);
+            _res.queryTimes[q].emplace_back(duration_cast<TimeUnit>(Clock::now() - queryTimer));
         }
 
         if constexpr (debug) {
@@ -76,15 +85,8 @@ void BenchmarkDriver::run() {
     }
 
     if constexpr (totalTime) {
-        post = Clock::now();
-        auto duration = duration_cast<TimeUnit>(post - pre);
-        spdlog::info("Total time: {} us", duration.count());
-    }
-
-    if constexpr (perQuery) {
-        // for (size_t i {0}; i < _queries.size(); i++) {
-        //     spdlog::info("{} : {}", _queries[i], queryTimes[i].count());
-        // }
+        auto duration = duration_cast<TimeUnit>(Clock::now() - totalTimer);
+        _res.totalTimes.emplace_back(duration);
     }
 }
 }
