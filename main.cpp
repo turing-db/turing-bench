@@ -82,19 +82,21 @@ int main (int argc, char** argv) {
     }
 
     if (totalTime) {
-        for (size_t i = 0; i < numRuns; ++i) {
+        for (size_t i = 1; i <= numRuns; ++i) {
             spdlog::info("Performing total time run {}/{}.", i, numRuns);
             dr.run<TOTALTIME, false, false>();
         }
         spdlog::info("Finished runs for total time.");
+        dr.reset();
     }
 
     if (perQuery) {
-        for ([[maybe_unused]] size_t i = 0; i < numRuns; ++i) {
+        for ([[maybe_unused]] size_t i = 1; i <= numRuns; ++i) {
             spdlog::info("Performing per query run {}/{}.", i, numRuns);
             dr.run<false, PERQUERY, false>();
         }
         spdlog::info("Finished per query runs.");
+        dr.reset();
     }
 
     auto results = dr.getResults();
@@ -102,9 +104,11 @@ int main (int argc, char** argv) {
         spdlog::info("Run {} took {} us", ++i, time.count());
     }
 
-    for (size_t i {0}; const auto& [query, times] : results.queryTimes) {
-        auto avg = std::reduce(times.begin(), times.end()) / times.size();
-        spdlog::info("Run {} average time for query : {}", i, query);
-        spdlog::info("{} us", avg.count());
+    for (size_t i {0}; const auto& runInfo : results.queryTimes) {
+        for (const auto& [query, times] : runInfo) {
+            auto avg = std::reduce(times.begin(), times.end()) / times.size();
+            spdlog::info("Run {} average time for query : {}", ++i, query);
+            spdlog::info("{} us", avg.count());
+        }
     }
 }

@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -15,7 +16,7 @@ public:
 
     struct BenchmarkResult {
         std::vector<TimeUnit> totalTimes;
-        std::map<std::string, std::vector<TimeUnit>> queryTimes;
+        std::vector<std::map<std::string, std::vector<TimeUnit>>> queryTimes;
     };
 
     BenchmarkDriver(const std::string& graph, turingClient::TuringClient& cl,
@@ -24,7 +25,8 @@ public:
           _cl(cl),
           _runs(runs)
     {
-        _res.totalTimes.reserve(runs);
+        _res.totalTimes.reserve(_runs);
+        _res.queryTimes.resize(_runs);
     }
 
     bool setup(const std::string& buildFile, const std::string& queryFile);
@@ -36,11 +38,14 @@ public:
 
     BenchmarkResult getResults() { return _res; }
 
+    void reset() { _currentRun = 0; }
+
 private:
     std::string _graphName;
     turingClient::TuringClient& _cl;
     BenchmarkResult _res;
     uint32_t _runs {1};
+    uint32_t _currentRun {0};
 
     std::vector<std::string> _queries;
 
@@ -73,7 +78,8 @@ void BenchmarkDriver::run() {
         bool res = query(q);
 
         if constexpr (perQuery) {
-            _res.queryTimes[q].emplace_back(duration_cast<TimeUnit>(Clock::now() - queryTimer));
+            _res.queryTimes.at(_currentRun)[q]
+                .emplace_back(duration_cast<TimeUnit>(Clock::now() - queryTimer));
         }
 
         if constexpr (debug) {
@@ -88,5 +94,6 @@ void BenchmarkDriver::run() {
         auto duration = duration_cast<TimeUnit>(Clock::now() - totalTimer);
         _res.totalTimes.emplace_back(duration);
     }
+    _currentRun++;
 }
 }
