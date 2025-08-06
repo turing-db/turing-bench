@@ -99,4 +99,5 @@ target_sources(turing-bench
 target_link_libraries(turing-bench PRIVATE
    turing_client_cpp_s
    argparse
+   tabulate
 )

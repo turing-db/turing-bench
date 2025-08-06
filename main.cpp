@@ -1,8 +1,8 @@
 #include <cstdint>
 #include <cstdlib>
-#include <ranges>
 #include <spdlog/spdlog.h>
 #include <argparse.hpp>
+
 
 #include "TuringClient.h"
 #include "driver/BenchmarkDriver.h"
@@ -99,10 +99,14 @@ int main (int argc, char** argv) {
         dr.reset();
     }
 
+    dr.present();
+
     auto results = dr.getResults();
+    /*
     for (size_t i{0}; const auto& time : results.totalTimes) {
         spdlog::info("Run {} took {} us", ++i, time.count());
     }
+    */
 
     for (size_t i {0}; const auto& runInfo : results.queryTimes) {
         for (const auto& [query, times] : runInfo) {

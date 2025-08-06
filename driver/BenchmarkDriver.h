@@ -40,6 +40,8 @@ public:
 
     void reset() { _currentRun = 0; }
 
+    void present(std::ostream& out=std::cout);
+
 private:
     std::string _graphName;
     turingClient::TuringClient& _cl;
@@ -55,6 +57,9 @@ private:
                       const std::string& filepath);
 
     bool query(const std::string& q, const std::string& change = "");
+
+    void presentTotal(std::ostream& out);
+    void presentPerQuery(std::ostream& out);
 };
 
 template <bool totalTime, bool perQuery, bool debug>
