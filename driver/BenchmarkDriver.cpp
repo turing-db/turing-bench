@@ -55,7 +55,7 @@ bool BenchmarkDriver::buildGraph(const std::string& buildFile) {
     }
 
     // Build the graph from parsed queries
-    if (!query("change new")) {
+    if (!queryDB("change new")) {
         spdlog::error("Failed to create new change");
         spdlog::error(_cl.getError().fmtMessage());
         return false;
@@ -69,7 +69,7 @@ bool BenchmarkDriver::buildGraph(const std::string& buildFile) {
             return false;
         }
 
-        bool res = query(createQuery, changeStr);
+        bool res = queryDB(createQuery, changeStr);
         if (!res) {
             spdlog::error("Failed to run build query: {}", createQuery);
             spdlog::error(_cl.getError().fmtMessage());
@@ -77,7 +77,7 @@ bool BenchmarkDriver::buildGraph(const std::string& buildFile) {
         }
     }
 
-    if (!query("change submit", changeStr)) {
+    if (!queryDB("change submit", changeStr)) {
         spdlog::error("Failed to submit change");
         spdlog::error(_cl.getError().fmtMessage());
         return false;
@@ -87,10 +87,10 @@ bool BenchmarkDriver::buildGraph(const std::string& buildFile) {
     return true;
 }
 
-bool BenchmarkDriver::query(const std::string& q, const std::string& change) {
+bool BenchmarkDriver::queryDB(const std::string& query, const std::string& change) {
     // NOTE: This has to be reconstructed each time otherwise json error..
     std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;
-    bool res = _cl.query(q, _graphName, ret, "", change);
+    bool res = _cl.query(query, _graphName, ret, "", change);
     // for (const auto& v :ret) {
     //     spdlog::info("Query {} returned {} elements", q, v->size());
     // }
