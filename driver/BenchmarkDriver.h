@@ -18,6 +18,7 @@ public:
     struct BenchmarkResult {
         std::vector<TimeUnit> totalTimes;
         std::map<std::string, std::vector<TimeUnit>> queryTimes;
+        std::map<std::string, std::pair<size_t, size_t>> queryDims;
     };
 
     BenchmarkDriver(const std::string& graph, turingClient::TuringClient& cl,
@@ -31,7 +32,6 @@ public:
     }
 
     bool setup(const std::string& buildFile="", const std::string& queryFile="");
-
 
     template <bool totalTime, bool perQuery, bool debug>
     void run();
@@ -66,9 +66,9 @@ private:
         return _cl.query("create graph "+ graphName, "default", ret);
     }
 
-    bool queryDB(const std::string& q, const std::string& change = "");
+    bool queryDB(const std::string& q, const std::string& change="");
     bool queryDB(std::vector<std::unique_ptr<turingClient::TypedColumn>>& col,
-                 const std::string& query, const std::string& change);
+                 const std::string& query, const std::string& change="");
 
     bool buildGraph(const std::string& buildFile);
     bool loadGraph(const std::string& graph);
@@ -142,7 +142,9 @@ void BenchmarkDriver::runQueryBenchmark() {
     
     Timestamp queryTimer;
 
+    std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;
     for (const auto& query : _queries) {
+        ret.clear();
         spdlog::info("Running benchmarks for query: {}", query);
         for (; _currentRun < _runs; _currentRun++) {
             std::cout << "\r" << std::setw(_spdlogFmt.size() - 4) << " " << "Run "
@@ -150,16 +152,21 @@ void BenchmarkDriver::runQueryBenchmark() {
 
             queryTimer = Clock::now();
 
-            bool res = queryDB(query);
+            bool res = queryDB(ret, query);
             if constexpr (debug) {
                 if (!res) {
                     spdlog::error("Query {} failed to execute:", query);
                     spdlog::error(_cl.getError().fmtMessage());
                     return;
                 }
+                if (ret.size() == 0) {
+                    spdlog::error("Query {} returned an empty column.", query);
+                    return;
+                }
             }
             TimeUnit timeTaken = duration_cast<TimeUnit>(Clock::now() - queryTimer);
             _res.queryTimes[query].emplace_back(timeTaken);
+            _res.queryDims.try_emplace(query, ret.size(), ret.at(0)->size());
         }
         std::cout << std::endl;
         _currentRun = 0;

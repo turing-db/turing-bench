@@ -171,7 +171,7 @@ void BenchmarkDriver::presentTotal(std::ostream& out) {
 void BenchmarkDriver::presentPerQuery(std::ostream& out) {
     using namespace tabulate;
     Table table;
-    table.add_row({"Query", "Mean", "Min", "Max", "Median", "Throughput (queries/second)"});
+    table.add_row({"Query", "Mean", "Min", "Max", "Median", "Throughput (queries/second)", "Column Dimensions"});
 
     auto queryTimes = _res.queryTimes;
     for (auto [query, times] : queryTimes) {
@@ -189,8 +189,11 @@ void BenchmarkDriver::presentPerQuery(std::ostream& out) {
             / (std::chrono::duration_cast<std::chrono::milliseconds>(sum).count()
                / 1000.f);
 
+        const auto [rows, cols] = _res.queryDims[query];
+        const std::string dimStr = std::to_string(rows) + "x" + std::to_string(cols);
+
         table.add_row(
-            {query, ms(mean), ms(min), ms(max), ms(median), std::to_string(throughput)});
+            {query, ms(mean), ms(min), ms(max), ms(median), std::to_string(throughput), dimStr});
     }
     out << table << std::endl;
 }
