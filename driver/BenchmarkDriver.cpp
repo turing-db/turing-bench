@@ -5,6 +5,7 @@
 #include <numeric>
 
 #include "TuringClient.h"
+#include "TuringClientResult.h"
 #include "TypedColumn.h"
 #include "tabulate/table.hpp"
 
@@ -58,6 +59,12 @@ bool BenchmarkDriver::setup(const std::string& buildFile, const std::string& que
 bool BenchmarkDriver::loadGraph(const std::string& graphName) {
     bool loadRes = _cl.loadGraph(graphName);
     if (!loadRes) {
+        auto& errorMsg = _cl.getError().getErrorMsg();
+        // XXX: Brittle, but only way to check the error type returned by SDK
+        if (errorMsg.find("GRAPH_ALREADY_EXISTS") != std::string::npos) {
+            spdlog::warn("Graph {} already loaded. Continuing.", graphName);
+            return true;
+        }
         spdlog::error("Failed to load graph {}", graphName);
         spdlog::error(_cl.getError().fmtMessage());
     }
