@@ -10,5 +10,8 @@ Example usage:
 
 This will run the queries in `samples/str-prop-multihop.cypher` against the `reactome` database, running each query `100` times, and reporting the stats for each individual query.
 
+>[!note] Specific URLs with the `--url` flag
+> You may specify any URL and port with a running TuringDB server using the `--url` or `-u` options. If left unspecified, `turing-bench` assumes there is a TuringDB server running locally, and attempts to query `http://127.0.0.1:6666`.
+
 ## Example Query Files
 Example query files are provided in `samples/`.
