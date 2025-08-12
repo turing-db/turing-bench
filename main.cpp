@@ -9,27 +9,42 @@
 
 using namespace bm;
 
-constexpr bool TOTALTIME {true};
-constexpr bool PERQUERY {true};
-[[maybe_unused]] constexpr bool DEBUG {true};
-
 int main (int argc, char** argv) {
     using namespace turingClient;
 
     argparse::ArgumentParser ap("TuringDB Benchmark");
-        std::string graph{}; 
-        std::string buildFile{}; 
-        std::string queryFile{};
-        [[maybe_unused]] bool totalTime {true};
-        [[maybe_unused]] bool perQuery {false};
-        [[maybe_unused]] bool debug {false};
-        uint16_t numRuns {1};
+    std::string buildFile{}; 
+    std::string graphToLoad{}; 
 
-    ap.add_argument("-b", "--build")
+    std::string queryFile{};
+
+    [[maybe_unused]] bool totalTime {true};
+    [[maybe_unused]] bool perQuery {false};
+    [[maybe_unused]] bool debug {false};
+
+    uint16_t numRuns {1};
+
+    std::string url {"http://127.0.0.1:6666"};
+
+    ap.add_argument("-u", "--url")
+            .nargs(1)
+            .store_into(url)
+            .required()
+            .default_value("http://127.0.0.1:6666")
+            .help("URL and port of TuringDB server to connect to.");
+
+    auto& graphLoadGroup = ap.add_mutually_exclusive_group(true);
+    auto& modeGroup = ap.add_mutually_exclusive_group(true);
+
+    graphLoadGroup.add_argument("-b", "--build")
         .nargs(1)
         .store_into(buildFile)
-        .required()
-        .help("CYPHER file containing create queries to build a DB from");
+        .help("CYPHER file containing create queries to build a DB from.");
+
+    graphLoadGroup.add_argument("-l", "--load")
+        .nargs(1)
+        .store_into(graphToLoad)
+        .help("The existing graph to load into the TuringDB server.");
 
     ap.add_argument("-q", "--query")
         .nargs(1)
@@ -37,14 +52,14 @@ int main (int argc, char** argv) {
         .required()
         .help("The query file to run against the loaded DB.");
 
-    ap.add_argument("-t", "--total-time")
+    modeGroup.add_argument("-t", "--total-time")
         .nargs(0)
         .store_into(totalTime)
         .default_value(true)
         .help("Perform benchmark runs where only the total time to execute all "
               "queries is measured.");
 
-    ap.add_argument("-p", "--per-query")
+    modeGroup.add_argument("-p", "--per-query")
         .nargs(0)
         .store_into(perQuery)
         .default_value(false)
@@ -72,9 +87,11 @@ int main (int argc, char** argv) {
         return 1;
     }
 
-    TuringClient client("http://127.0.0.1:6666");
-    BenchmarkDriver dr("default", client, numRuns);
-    bool setupResult = dr.setup(buildFile, queryFile);
+    TuringClient client(url);
+    spdlog::info("URL : {}", client.getUrl());
+    const std::string graphName = graphToLoad.empty() ? "default" : graphToLoad;
+    BenchmarkDriver dr(graphName, client, numRuns);
+    bool setupResult = dr.setup(graphToLoad, buildFile, queryFile);
 
     if (!setupResult) {
         spdlog::error("Setup failed.");
@@ -84,7 +101,7 @@ int main (int argc, char** argv) {
     if (totalTime) {
         for (size_t i = 1; i <= numRuns; ++i) {
             spdlog::info("Performing total time run {}/{}.", i, numRuns);
-            dr.run<TOTALTIME, false, false>();
+            dr.run<true, false, false>();
         }
         spdlog::info("Finished runs for total time.");
         dr.reset();
@@ -98,4 +115,6 @@ int main (int argc, char** argv) {
     dr.present();
 
     auto results = dr.getResults();
+
+    return EXIT_SUCCESS;
 }

@@ -30,9 +30,8 @@ public:
         spdlog::set_pattern(_spdlogFmt);
     }
 
-    bool setup(const std::string& buildFile, const std::string& queryFile);
+    bool setup(const std::string& graphToLoad="", const std::string& buildFile="", const std::string& queryFile="");
 
-    bool buildGraph(const std::string& buildFile);
 
     template <bool totalTime, bool perQuery, bool debug>
     void run();
@@ -63,6 +62,9 @@ private:
                       const std::string& filepath);
 
     bool queryDB(const std::string& q, const std::string& change = "");
+    bool buildGraph(const std::string& buildFile);
+    bool loadGraph(const std::string& graph);
+
 
     void presentTotal(std::ostream& out);
     void presentPerQuery(std::ostream& out);

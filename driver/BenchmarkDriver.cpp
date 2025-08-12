@@ -30,9 +30,17 @@ void BenchmarkDriver::parseQueries(std::vector<std::string>& queries,
     }
 }
 
-bool BenchmarkDriver::setup(const std::string& buildFile, const std::string& queryFile) {
-    spdlog::info("Building graph from CYPHER queries in file {}.", buildFile);
-    if (!buildGraph(buildFile)) {
+bool BenchmarkDriver::setup(const std::string& graphToLoad, const std::string& buildFile, const std::string& queryFile) {
+    if (!buildFile.empty()) {
+        spdlog::info("Building graph from CYPHER queries in file {}.", buildFile);
+        if (!buildGraph(buildFile)) {
+            return false;
+        }
+    } else if (!graphToLoad.empty()) {
+        spdlog::info("Loading graph {}", graphToLoad);
+        loadGraph(graphToLoad);
+    } else {
+        spdlog::error("No CYPHER build file nor graph to load provided");
         return false;
     }
 
@@ -43,6 +51,16 @@ bool BenchmarkDriver::setup(const std::string& buildFile, const std::string& que
         return false;
     }
     return true;
+}
+
+bool BenchmarkDriver::loadGraph(const std::string& graphName) {
+    bool loadRes = _cl.loadGraph(graphName);
+    if (!loadRes) {
+        spdlog::error("Failed to load graph {}", graphName);
+        spdlog::error(_cl.getError().fmtMessage());
+    }
+
+    return loadRes;
 }
 
 bool BenchmarkDriver::buildGraph(const std::string& buildFile) {
