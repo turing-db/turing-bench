@@ -29,12 +29,10 @@ int main (int argc, char** argv) {
     ap.add_argument("-u", "--url")
             .nargs(1)
             .store_into(url)
-            .required()
             .default_value("http://127.0.0.1:6666")
             .help("URL and port of TuringDB server to connect to.");
 
     auto& graphLoadGroup = ap.add_mutually_exclusive_group(true);
-    auto& modeGroup = ap.add_mutually_exclusive_group(true);
 
     graphLoadGroup.add_argument("-b", "--build")
         .nargs(1)
@@ -52,14 +50,14 @@ int main (int argc, char** argv) {
         .required()
         .help("The query file to run against the loaded DB.");
 
-    modeGroup.add_argument("-t", "--total-time")
+    ap.add_argument("-t", "--total-time")
         .nargs(0)
         .store_into(totalTime)
         .default_value(true)
         .help("Perform benchmark runs where only the total time to execute all "
               "queries is measured.");
 
-    modeGroup.add_argument("-p", "--per-query")
+    ap.add_argument("-p", "--per-query")
         .nargs(0)
         .store_into(perQuery)
         .default_value(false)
@@ -87,12 +85,17 @@ int main (int argc, char** argv) {
         return 1;
     }
 
+    if (!totalTime && !perQuery) {
+        spdlog::error("No mode selected. Please use --per-query or --total-time.");
+        return EXIT_FAILURE;
+    }
+
     TuringClient client(url);
-    spdlog::info("URL : {}", client.getUrl());
+
     const std::string graphName = graphToLoad.empty() ? "default" : graphToLoad;
     BenchmarkDriver dr(graphName, client, numRuns);
-    bool setupResult = dr.setup(graphToLoad, buildFile, queryFile);
 
+    bool setupResult = dr.setup(buildFile, queryFile);
     if (!setupResult) {
         spdlog::error("Setup failed.");
         return EXIT_FAILURE;

@@ -30,7 +30,7 @@ public:
         spdlog::set_pattern(_spdlogFmt);
     }
 
-    bool setup(const std::string& graphToLoad="", const std::string& buildFile="", const std::string& queryFile="");
+    bool setup(const std::string& buildFile="", const std::string& queryFile="");
 
 
     template <bool totalTime, bool perQuery, bool debug>
@@ -68,6 +68,17 @@ private:
 
     void presentTotal(std::ostream& out);
     void presentPerQuery(std::ostream& out);
+
+
+    inline static auto ms = [](TimeUnit t) {
+        return std::to_string(
+            std::chrono::duration_cast<std::chrono::milliseconds>(t).count());
+    };
+
+    inline static auto s = [](TimeUnit t) {
+        return std::to_string(
+            std::chrono::duration_cast<std::chrono::milliseconds>(t).count() / 1000.f);
+    };
 };
 
 template <bool totalTime, bool perQuery, bool debug>
@@ -134,12 +145,11 @@ void BenchmarkDriver::runQueryBenchmark() {
                     return;
                 }
             }
+            TimeUnit timeTaken = duration_cast<TimeUnit>(Clock::now() - queryTimer);
+            _res.queryTimes[query].emplace_back(timeTaken);
         }
         std::cout << std::endl;
-
-        TimeUnit timeTaken = duration_cast<TimeUnit>(Clock::now() - queryTimer);
-
-        _res.queryTimes[query].emplace_back(timeTaken);
+        _currentRun = 0;
     }
 }
 

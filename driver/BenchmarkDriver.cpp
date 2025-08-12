@@ -30,15 +30,17 @@ void BenchmarkDriver::parseQueries(std::vector<std::string>& queries,
     }
 }
 
-bool BenchmarkDriver::setup(const std::string& graphToLoad, const std::string& buildFile, const std::string& queryFile) {
+bool BenchmarkDriver::setup(const std::string& buildFile, const std::string& queryFile) {
     if (!buildFile.empty()) {
         spdlog::info("Building graph from CYPHER queries in file {}.", buildFile);
         if (!buildGraph(buildFile)) {
             return false;
         }
-    } else if (!graphToLoad.empty()) {
-        spdlog::info("Loading graph {}", graphToLoad);
-        loadGraph(graphToLoad);
+    } else if (!_graphName.empty()) {
+        spdlog::info("Loading graph {}", _graphName);
+        if (!loadGraph(_graphName)) {
+            return false;
+        }
     } else {
         spdlog::error("No CYPHER build file nor graph to load provided");
         return false;
@@ -131,17 +133,6 @@ void BenchmarkDriver::presentTotal(std::ostream& out) {
     using namespace tabulate;
     Table table;
 
-    // auto timeString = [](TimeUnit t) { return std::to_string(t.count()); };
-    auto ms = [](TimeUnit t) {
-        return std::to_string(
-            std::chrono::duration_cast<std::chrono::milliseconds>(t).count());
-    };
-
-    auto s = [](TimeUnit t) {
-        return std::to_string(
-            std::chrono::duration_cast<std::chrono::milliseconds>(t).count() / 1000.f);
-    };
-
     table.add_row({"Results over " + std::to_string(n) + " runs", "ms", "s"});
     table.add_row({"Mean", ms(mean), s(mean)});
     table.add_row({"Min", ms(min), s(min)});
@@ -158,6 +149,26 @@ void BenchmarkDriver::presentTotal(std::ostream& out) {
 }
 
 void BenchmarkDriver::presentPerQuery(std::ostream& out) {
+    using namespace tabulate;
+    Table table;
+    table.add_row({"Query", "Mean", "Min", "Max", "Median"});
+
+    auto queryTimes = _res.queryTimes;
+    for (auto [query, times] : queryTimes) {
+        std::ranges::sort(times);
+        const size_t n = _runs;
+
+        auto sum = std::reduce(times.begin(), times.end());
+        auto mean = sum / n;
+        auto min = times.front();
+        auto max = times.back();
+        auto median = (n % 2) == 0 ? (times[n / 2 - 1] + times[n / 2]) / 2
+                                   : times[n / 2];
+
+        table.add_row({query, ms(mean), ms(min), ms(max), ms(median)});
+    }
+
+    out << table << std::endl;
 }
 
 void BenchmarkDriver::present(std::ostream& out) {
