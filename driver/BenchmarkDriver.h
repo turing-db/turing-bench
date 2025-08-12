@@ -61,7 +61,15 @@ private:
     void parseQueries(std::vector<std::string>& queries,
                       const std::string& filepath);
 
+    bool createGraph(const std::string& graphName) {
+        std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;
+        return _cl.query("create graph "+ graphName, "default", ret);
+    }
+
     bool queryDB(const std::string& q, const std::string& change = "");
+    bool queryDB(std::vector<std::unique_ptr<turingClient::TypedColumn>>& col,
+                 const std::string& query, const std::string& change);
+
     bool buildGraph(const std::string& buildFile);
     bool loadGraph(const std::string& graph);
 
@@ -69,17 +77,22 @@ private:
     void presentTotal(std::ostream& out);
     void presentPerQuery(std::ostream& out);
 
+    inline static auto us = [](TimeUnit t) {
+        using namespace std::literals;
+        return std::to_string(t / 1us) + "us";
+    };
 
     inline static auto ms = [](TimeUnit t) {
-        return std::to_string(
-            std::chrono::duration_cast<std::chrono::milliseconds>(t).count());
+        using namespace std::literals;
+        return std::to_string(t / 1ms) + "ms";
     };
 
     inline static auto s = [](TimeUnit t) {
-        return std::to_string(
-            std::chrono::duration_cast<std::chrono::milliseconds>(t).count() / 1000.f);
+        using namespace std::literals;
+        return std::to_string(t / 1s) + "s";
     };
-};
+
+    };
 
 template <bool totalTime, bool perQuery, bool debug>
 void BenchmarkDriver::run() {

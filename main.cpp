@@ -1,3 +1,4 @@
+#include <ctime>
 #include <cstdint>
 #include <cstdlib>
 #include <spdlog/spdlog.h>
@@ -8,6 +9,13 @@
 #include "driver/BenchmarkDriver.h"
 
 using namespace bm;
+
+namespace {
+    std::string generateTempGraphName() {
+        return "graph" + std::to_string(time(nullptr));
+    }
+}
+
 
 int main (int argc, char** argv) {
     using namespace turingClient;
@@ -92,7 +100,8 @@ int main (int argc, char** argv) {
 
     TuringClient client(url);
 
-    const std::string graphName = graphToLoad.empty() ? "default" : graphToLoad;
+    const std::string graphName =
+        graphToLoad.empty() ? generateTempGraphName() : graphToLoad;
     BenchmarkDriver dr(graphName, client, numRuns);
 
     bool setupResult = dr.setup(buildFile, queryFile);

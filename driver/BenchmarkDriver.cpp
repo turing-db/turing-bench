@@ -74,6 +74,13 @@ bool BenchmarkDriver::buildGraph(const std::string& buildFile) {
         return false;
     }
 
+    if (!createGraph(_graphName)) {
+        spdlog::error("Failed to create graph : {}", _graphName);
+        spdlog::error(_cl.getError().fmtMessage());
+        return false;
+    }
+
+    // TODO: Extract change number
     // Build the graph from parsed queries
     if (!queryDB("change new")) {
         spdlog::error("Failed to create new change");
@@ -81,6 +88,7 @@ bool BenchmarkDriver::buildGraph(const std::string& buildFile) {
         return false;
     }
 
+    // TODO: Use change number here
     auto changeStr = std::to_string(_changeNo);
 
     for (const auto& createQuery : buildQueries) {
@@ -111,9 +119,14 @@ bool BenchmarkDriver::queryDB(const std::string& query, const std::string& chang
     // NOTE: This has to be reconstructed each time otherwise json error..
     std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;
     bool res = _cl.query(query, _graphName, ret, "", change);
-    // for (const auto& v :ret) {
-    //     spdlog::info("Query {} returned {} elements", q, v->size());
-    // }
+    return res;
+}
+
+bool BenchmarkDriver::queryDB(
+    std::vector<std::unique_ptr<turingClient::TypedColumn>>& col,
+    const std::string& query, const std::string& change) {
+    // NOTE: This has to be reconstructed each time otherwise json error..
+    bool res = _cl.query(query, _graphName, col, "", change);
     return res;
 }
 
@@ -151,7 +164,7 @@ void BenchmarkDriver::presentTotal(std::ostream& out) {
 void BenchmarkDriver::presentPerQuery(std::ostream& out) {
     using namespace tabulate;
     Table table;
-    table.add_row({"Query", "Mean", "Min", "Max", "Median"});
+    table.add_row({"Query", "Mean", "Min", "Max", "Median", "Throughput (queries/second)"});
 
     auto queryTimes = _res.queryTimes;
     for (auto [query, times] : queryTimes) {
@@ -164,10 +177,14 @@ void BenchmarkDriver::presentPerQuery(std::ostream& out) {
         auto max = times.back();
         auto median = (n % 2) == 0 ? (times[n / 2 - 1] + times[n / 2]) / 2
                                    : times[n / 2];
+        auto throughput =
+            n
+            / (std::chrono::duration_cast<std::chrono::milliseconds>(sum).count()
+               / 1000.f);
 
-        table.add_row({query, ms(mean), ms(min), ms(max), ms(median)});
+        table.add_row(
+            {query, us(mean), us(min), us(max), us(median), std::to_string(throughput)});
     }
-
     out << table << std::endl;
 }
 
