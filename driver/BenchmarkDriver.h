@@ -169,7 +169,7 @@ void BenchmarkDriver::runQueryBenchmark() {
             _res.queryDims.try_emplace(query, ret.size(), ret.at(0)->size());
         }
         std::cout << std::endl;
-        _currentRun = 0;
+        reset();
     }
 }
 

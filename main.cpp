@@ -73,9 +73,9 @@ int main (int argc, char** argv) {
               "measured.");
 
     ap.add_argument("-d", "--debug")
-        .nargs(0)
         .store_into(debug)
         .default_value(false)
+        .implicit_value(true)
         .help("Enable debug mode: logs errors of queries. SHOULD NOT BE USED FOR "
               "COLLECTING MEANINGFUL DATA.");
 
@@ -100,33 +100,37 @@ int main (int argc, char** argv) {
 
     TuringClient client(url);
 
+    // If building a graph from CYPHER, create a temporary name for the graph
+    // Otherwise, use the provided graph name to load it
     const std::string graphName =
         graphToLoad.empty() ? generateTempGraphName() : graphToLoad;
     BenchmarkDriver dr(graphName, client, numRuns);
 
+    // Load/build any databases, parse queries
     bool setupResult = dr.setup(buildFile, queryFile);
     if (!setupResult) {
         spdlog::error("Setup failed.");
         return EXIT_FAILURE;
     }
 
+    if (debug) {
+        spdlog::warn("Using debug mode: results may be inaccurate.");
+    }
+
     if (totalTime) {
-        for (size_t i = 1; i <= numRuns; ++i) {
-            spdlog::info("Performing total time run {}/{}.", i, numRuns);
-            dr.run<true, false, false>();
-        }
-        spdlog::info("Finished runs for total time.");
-        dr.reset();
+        spdlog::error("TotalTime mode currently not supported");
+        return EXIT_FAILURE;
     }
 
     if (perQuery) {
-        dr.runQueryBenchmark<false>();
-        dr.reset();
+        if (!debug) {
+            dr.runQueryBenchmark<false>();
+        } else {
+            dr.runQueryBenchmark<true>();
+        }
     }
 
     dr.present();
-
-    auto results = dr.getResults();
 
     return EXIT_SUCCESS;
 }
