@@ -190,7 +190,7 @@ void BenchmarkDriver::presentPerQuery(std::ostream& out) {
                / 1000.f);
 
         table.add_row(
-            {query, us(mean), us(min), us(max), us(median), std::to_string(throughput)});
+            {query, ms(mean), ms(min), ms(max), ms(median), std::to_string(throughput)});
     }
     out << table << std::endl;
 }
