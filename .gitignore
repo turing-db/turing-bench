@@ -4,7 +4,4 @@ compile_commands.json
 build
 .cache/
 turingdb.out/
-*/.venv/
-*.venv/
 neo4j/.venv/
-src/neo4j/.venv/
