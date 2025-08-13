@@ -73,7 +73,6 @@ private:
     bool buildGraph(const std::string& buildFile);
     bool loadGraph(const std::string& graph);
 
-
     void presentTotal(std::ostream& out);
     void presentPerQuery(std::ostream& out);
 
@@ -92,54 +91,14 @@ private:
         return std::to_string(t / 1s) + "s";
     };
 
-    };
-
-template <bool totalTime, bool perQuery, bool debug>
-void BenchmarkDriver::run() {
-    using namespace std::chrono;
-    using Clock = high_resolution_clock;
-    using Timestamp = time_point<high_resolution_clock>;
-
-    Timestamp totalTimer;
-    Timestamp queryTimer;
-
-    if constexpr (totalTime) {
-        totalTimer = Clock::now();
-    }
-
-    for (const auto& q : _queries) {
-        if constexpr (perQuery) {
-            queryTimer = Clock::now();
-        }
-
-        bool res = queryDB(q);
-
-        if constexpr (perQuery) {
-            _res.queryTimes[q].emplace_back(
-                duration_cast<TimeUnit>(Clock::now() - queryTimer));
-        }
-
-        if constexpr (debug) {
-            if (!res) {
-                spdlog::error("Query failed to execute : {}", q);
-                spdlog::error(_cl.getError().fmtMessage());
-            }
-        }
-    }
-
-    if constexpr (totalTime) {
-        auto duration = duration_cast<TimeUnit>(Clock::now() - totalTimer);
-        _res.totalTimes.emplace_back(duration);
-    }
-    _currentRun++;
-}
+};
 
 template <bool debug>
 void BenchmarkDriver::runQueryBenchmark() {
     using namespace std::chrono;
     using Clock = high_resolution_clock;
     using Timestamp = time_point<high_resolution_clock>;
-    
+
     Timestamp queryTimer;
 
     std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;

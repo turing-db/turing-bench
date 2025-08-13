@@ -10,13 +10,13 @@ Herein, `$NEO4JDIR = $TURINGDBDIR/external/neo4j/neo4j-community-4.3.23-SNAPSHOT
 > Optional: if you already have a working Reactome instance, then use that one. Make sure any references to the graph name are changed, e.g. setting the default graph to the one you will work with.
 ```
 cd $NEO4JDIR/data/databases
-rm graph.db
+rm -rf graph.db
 wget https://reactome.org/download/current/reactome.graphdb.tgz
 tar -xzvf reactome.graphdb.tgz
 ```
 I needed to remove the old `graph.db` and replace it with the new one, which the `tar` extraction provides.
 
-3. Configure Neo4j
+3. Configure Neo4j: set the default graph to your working Reactome
 ```
 echo "dbms.default_database=graph.db" >> $NEO4JDIR/conf/neo4j.conf
 
