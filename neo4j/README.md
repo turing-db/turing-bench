@@ -6,6 +6,8 @@ cd $TURINGDBDIR/external/neo4j && tar -xvf neo4j-4.3.23.tar.gz
 ```
 Herein, `$NEO4JDIR = $TURINGDBDIR/external/neo4j/neo4j-community-4.3.23-SNAPSHOT`, i.e. the directory which Neo4j was just extracted into.
 
+ ⚠️ If  ou are using the new GitHub TuringDB repo, you will need to install and pull on `git lfs` to get the real `tar` file. Please do this before running the `setup.sh`.
+
 2. Get fresh Reactome into Neo4j
 > Optional: if you already have a working Reactome instance, then use that one. Make sure any references to the graph name are changed, e.g. setting the default graph to the one you will work with.
 ```
@@ -23,6 +25,8 @@ echo "dbms.default_database=graph.db" >> $NEO4JDIR/conf/neo4j.conf
 echo "dbms.recovery.fail_on_missing_files=false" >> $NEO4JDIR/conf/neo4j.conf
 
 echo "unsupported.dbms.tx_log.fail_on_corrupted_log_files=false" >> $NEO4JDIR/conf/neo4j.conf
+
+echo "dbms.security.auth_enabled=false" >> $NEO4JDIR/conf/neo4j.conf
 ```
 
 4. Start the Neo4j instance
@@ -31,6 +35,15 @@ cd $NEO4JDIR
 bin/neo4j start
 ```
 > Note the address which the server is running on, you may need to supply this as an argument to the benchmarking script
+
+⚠️ There is an error which I ran into where the first time you start Neo4j the database will be offline. It is fixed by stopping Neo4j and restarting it:
+
+```
+cd $NEO4JDIR
+bin/neo4j stop
+bin/neo4j start
+```
+NOTE: The setup script attempts to restart Neo4j to fix this, but it is temperamental, please try restarting Neo4j yourself after running `setup.sh` if the DB is still offline.
 
 5. Run the benchmark script, example usage:
 ```
