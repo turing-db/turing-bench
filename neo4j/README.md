@@ -45,7 +45,14 @@ bin/neo4j start
 ```
 NOTE: The setup script attempts to restart Neo4j to fix this, but it is temperamental, please try restarting Neo4j yourself after running `setup.sh` if the DB is still offline.
 
-5. Run the benchmark script, example usage:
+5. Create and build the Python virtual environment:
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+6. Run the benchmark script, example usage:
 ```
 python3 bench.py --query "samples/neo4j-str-prop-multihop.cypher" --runs 3
 ```

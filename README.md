@@ -1,6 +1,8 @@
 # `turing-bench`
 > Benchmarking tool for TuringDB. Using the TuringDB C++ SDK.
 
+> This repo also includes a tool for running comparative benchmarks against Neo4j in the `neo4j/` directory.
+
 ## Usage
 Build as standard Turing Biosystems project, and run `./turing-bench -h` in `build/build_package` to see command line options.
 
