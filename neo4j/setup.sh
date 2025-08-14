@@ -12,8 +12,10 @@ GRAPHDB_TAR="reactome.graphdb.tgz"
 DB_DIR="${NEO4JDIR}/data/databases"
 CONF_FILE="${NEO4JDIR}/conf/neo4j.conf"
 
+echo "Please ensure your current workspace (cwk, \$ACTIVE_REPO) is set to a TuringDB repo."
+
 # Check paths
-[ -d "$NEO4J_DOWNLOAD_DIR" ] || { echo "Directory $NEO4J_DOWNLOAD_DIR not found"; exit 1; }
+[ -d "$NEO4J_DOWNLOAD_DIR" ] || { echo "Directory $NEO4J_DOWNLOAD_DIR not found. Is your current workspace a TuringDB repo?"; exit 1; }
 
 # Extract Neo4j
 cd "$NEO4J_DOWNLOAD_DIR"
