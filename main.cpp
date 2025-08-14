@@ -30,7 +30,6 @@ int main (int argc, char** argv) {
     [[maybe_unused]] bool debug {false};
 
     uint16_t numRuns {1};
-    uint16_t numThreads {1};
 
     std::string url {"http://127.0.0.1:6666"};
 
@@ -84,12 +83,6 @@ int main (int argc, char** argv) {
         .store_into(numRuns)
         .default_value(1)
         .help("The number of runs per benchmark.");
-
-    ap.add_argument("-w", "--threads")
-            .nargs(1)
-            .store_into(numThreads)
-            .default_value(1)
-            .help("Number of threads to spawn queries from. Runs will be split between threads.");
 
     try {
         ap.parse_args(argc, argv);
