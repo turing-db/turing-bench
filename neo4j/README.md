@@ -4,6 +4,8 @@ This directory contains information for running comparable benchmarks against Ne
 ## Setup script (Preferred)
 `setup.sh` should contain all the required set up steps to go from nothing to a running Neo4j instance with Reactome loaded. However, if there are problems with the script, or you would like to perform the setup manually, the explanation of the script steps can be found below.
 
+⚠️ If you are using the new GitHub TuringDB repo, you will need to install and pull on `git lfs` to get the real `tar` file. Please do this before running the `setup.sh`.
+
 Otherwise, after running `setup.sh`, 
 - Create and build the Python virtual environment:
 ```
@@ -25,8 +27,6 @@ Use `python3 bench.py -h` for argument explanations.
 cd $TURINGDBDIR/external/neo4j && tar -xvf neo4j-4.3.23.tar.gz
 ```
 Herein, `$NEO4JDIR = $TURINGDBDIR/external/neo4j/neo4j-community-4.3.23-SNAPSHOT`, i.e. the directory which Neo4j was just extracted into.
-
- ⚠️ If  ou are using the new GitHub TuringDB repo, you will need to install and pull on `git lfs` to get the real `tar` file. Please do this before running the `setup.sh`.
 
 2. Get fresh Reactome into Neo4j
 > Optional: if you already have a working Reactome instance, then use that one. Make sure any references to the graph name are changed, e.g. setting the default graph to the one you will work with.
