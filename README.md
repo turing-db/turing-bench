@@ -16,3 +16,7 @@ You may specify any URL and port with a running TuringDB server using the `--url
 
 ## Example Query Files
 Example query files are provided in `samples/<db>`, where `<db>` is the database intended to be queried against.
+## Using Custom Query Files
+If you would like to provide your own query files, please make sure that each query is separated on a new line, with a semicolon at the end. See the samples in `samples/` for examples.
+
+Also ensure that you provide TuringDB CYPHER dialect queries to TuringDB benchmarks, and Neo4j-compatible CYPHER queries to Neo4j benchmarks.

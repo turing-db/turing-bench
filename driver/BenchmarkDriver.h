@@ -37,7 +37,7 @@ public:
     void run();
 
     template <bool debug>
-    void runQueryBenchmark();
+    bool runQueryBenchmark();
     
     BenchmarkResult getResults() { return _res; }
 
@@ -94,7 +94,7 @@ private:
 };
 
 template <bool debug>
-void BenchmarkDriver::runQueryBenchmark() {
+bool BenchmarkDriver::runQueryBenchmark() {
     using namespace std::chrono;
     using Clock = high_resolution_clock;
     using Timestamp = time_point<high_resolution_clock>;
@@ -116,20 +116,21 @@ void BenchmarkDriver::runQueryBenchmark() {
                 if (!res) {
                     spdlog::error("Query {} failed to execute:", query);
                     spdlog::error(_cl.getError().fmtMessage());
-                    return;
-                }
-                if (ret.size() == 0) {
-                    spdlog::error("Query {} returned an empty column.", query);
-                    return;
+                    return false;
                 }
             }
             TimeUnit timeTaken = duration_cast<TimeUnit>(Clock::now() - queryTimer);
             _res.queryTimes[query].emplace_back(timeTaken);
+            if (ret.size() == 0) {
+                    spdlog::error("Query {} returned an empty column.", query);
+                    return false;
+            }
             _res.queryDims.try_emplace(query, ret.size(), ret.at(0)->size());
         }
         std::cout << std::endl;
         reset();
     }
+    return true;
 }
 
 }

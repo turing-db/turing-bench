@@ -121,15 +121,21 @@ int main (int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    bool result = false;
     if (perQuery) {
         if (!debug) {
-            dr.runQueryBenchmark<false>();
+            result = dr.runQueryBenchmark<false>();
         } else {
-            dr.runQueryBenchmark<true>();
+            result = dr.runQueryBenchmark<true>();
         }
     }
 
-    dr.present();
+    if (result) {
+        dr.present();
+    }
+    else {
+        spdlog::error("Failed to run benchmarks");
+    }
 
     return EXIT_SUCCESS;
 }
