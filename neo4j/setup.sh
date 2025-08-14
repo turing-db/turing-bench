@@ -2,7 +2,6 @@
 set -euo pipefail  # Exit on error, unset vars, and fail on pipeline errors
 IFS=$'\n\t'
 
-# Variables
 NEO4J_TAR="neo4j-4.3.23.tar.gz"
 NEO4J_DIRNAME="neo4j-community-4.3.23-SNAPSHOT"
 NEO4J_DOWNLOAD_DIR="${ACTIVE_REPO:?}/src/external/neo4j"
@@ -19,10 +18,21 @@ echo "Please ensure your current workspace (cwk, \$ACTIVE_REPO) is set to a Turi
 
 # Extract Neo4j
 cd "$NEO4J_DOWNLOAD_DIR"
+
+# Check if Neo4j already extracted, exit if so
+if [ -d "$NEO4JDIR" ]; then
+    echo "Directory $NEO4JDIR already exists. Please backup or remove, and rerun the script. Exiting."
+    exit 0
+fi
+
+# Extract if not already (but this is redundant now with the above check)
 if [ ! -d "$NEO4JDIR" ]; then
     [ -f "$NEO4J_TAR" ] || { echo "$NEO4J_TAR not found"; exit 1; }
     tar -xvf "$NEO4J_TAR"
 fi
+
+# From here, the Neo4j instance is fresh, and so we can safely remove
+# anything without fear of deleting user data
 
 # Setup DB directory
 mkdir -p "$DB_DIR"
@@ -65,10 +75,10 @@ cd "$NEO4JDIR"
 echo "Starting Neo4j..."
 bin/neo4j start
 
-echo "Sleeping 15 seconds before restarting Neo4j to load Reactome"
+echo "Sleeping 15 seconds before restarting Neo4j to load Reactome (bug fix)"
 sleep 15
 
 echo "Restarting Neo4j..."
 bin/neo4j restart
 
-echo "Setup complete!"
+echo "Setup complete! Please wait a few seconds for Neo4j to warm up before running benchmarks"
