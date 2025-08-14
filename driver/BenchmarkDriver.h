@@ -17,7 +17,7 @@ public:
 
     struct BenchmarkResult {
         std::vector<TimeUnit> totalTimes;
-        std::map<std::string, std::vector<TimeUnit>> queryTimes;
+        std::vector<std::pair<std::string, std::vector<TimeUnit>>> queryTimes;
         std::map<std::string, std::pair<size_t, size_t>> queryDims;
     };
 
@@ -27,7 +27,6 @@ public:
           _cl(cl),
           _runs(runs)
     {
-        _res.totalTimes.reserve(_runs);
         spdlog::set_pattern(_spdlogFmt);
     }
 
@@ -83,7 +82,16 @@ private:
 
     inline static auto ms = [](TimeUnit t) {
         using namespace std::literals;
-        return std::to_string(t / 1ms) + "ms";
+        using namespace std::chrono;
+        // If it is a fraction of a ms, get the precise number
+        if ((t / 1ms) == 0) {
+            double ms_value = t.count() / 1000.0;  // divide by 1000.0 for floating-point
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(3) << ms_value << "ms";
+            return oss.str();
+        } else { // Otherwise, just get integer ms
+            return std::to_string(t / 1ms) + "ms";
+        }
     };
 
     inline static auto s = [](TimeUnit t) {
@@ -101,8 +109,12 @@ bool BenchmarkDriver::runQueryBenchmark() {
 
     Timestamp queryTimer;
 
-    std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;
     for (const auto& query : _queries) {
+        _res.queryTimes.emplace_back(query, std::vector<TimeUnit>{});
+    }
+
+    std::vector<std::unique_ptr<turingClient::TypedColumn>> ret;
+    for (size_t idx {0}; const auto& query : _queries) {
         ret.clear();
         spdlog::info("Running benchmarks for query: {}", query);
         for (; _currentRun < _runs; _currentRun++) {
@@ -120,7 +132,7 @@ bool BenchmarkDriver::runQueryBenchmark() {
                 }
             }
             TimeUnit timeTaken = duration_cast<TimeUnit>(Clock::now() - queryTimer);
-            _res.queryTimes[query].emplace_back(timeTaken);
+            _res.queryTimes.at(idx).second.emplace_back(timeTaken);
             if (ret.size() == 0) {
                     spdlog::error("Query {} returned an empty column.", query);
                     return false;
@@ -129,6 +141,7 @@ bool BenchmarkDriver::runQueryBenchmark() {
         }
         std::cout << std::endl;
         reset();
+        idx++;
     }
     return true;
 }
