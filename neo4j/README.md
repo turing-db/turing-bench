@@ -1,5 +1,25 @@
 This directory contains information for running comparable benchmarks against Neo4j.
 
+# Usage
+## Setup script (Preferred)
+`setup.sh` should contain all the required set up steps to go from nothing to a running Neo4j instance with Reactome loaded. However, if there are problems with the script, or you would like to perform the setup manually, the explanation of the script steps can be found below.
+
+Otherwise, after running `setup.sh`, 
+- Create and build the Python virtual environment:
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+You are then ready to run the benchmark script, example usage:
+```
+python3 bench.py --query "samples/neo4j-str-prop-multihop.cypher" --runs 3
+```
+
+Use `python3 bench.py -h` for argument explanations.
+
+## Manual
 1. Extract Neo4j Instance
 ```
 cd $TURINGDBDIR/external/neo4j && tar -xvf neo4j-4.3.23.tar.gz
