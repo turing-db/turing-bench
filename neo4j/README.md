@@ -4,7 +4,7 @@ This directory contains information for running comparable benchmarks against Ne
 ## Setup script (Preferred)
 `setup.sh` should contain all the required set up steps to go from nothing to a running Neo4j instance with Reactome loaded. However, if there are problems with the script, or you would like to perform the setup manually, the explanation of the script steps can be found below.
 
-⚠️ If you are using the new GitHub TuringDB repo, you will need to install and pull on `git lfs` to get the real `tar` file. Please do this before running the `setup.sh`.
+⚠️ If you are using the new GitHub TuringDB repo, you will need to install and pull on `git lfs` to get the real Neo4j archive `tar` file in `externa/neo4j`. Please do this before running the `setup.sh`.
 
 Otherwise, after running `setup.sh`, 
 - Create and build the Python virtual environment:
