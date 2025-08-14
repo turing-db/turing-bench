@@ -15,6 +15,18 @@ void BenchmarkDriver::parseQueries(std::vector<std::string>& queries,
                                    const std::string& filepath) {
     queries.clear();
 
+    {
+        // Quick check for semicolons to provide a helpful error message to user
+        std::ifstream tempFile(filepath);
+        if (std::find(std::istreambuf_iterator<char>(tempFile), {}, ';')
+            == std::istreambuf_iterator<char>()) {
+            spdlog::error(
+                "No semi-colons found in provided file, please ensure all queries "
+                "end with a semicolon.");
+            return;
+        }
+    }
+
     std::ifstream file(filepath);
     std::string line;
 
