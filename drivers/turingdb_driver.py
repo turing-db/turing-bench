@@ -21,7 +21,9 @@ class TuringDBDriver(AbstractDriver):
       sys.exit(-1)
       
     try:
-      self.client.load_graph(graph_name=database, raise_if_loaded=False)
+      loaded_graphs = self.client.list_loaded_graphs()
+      if database not in loaded_graphs:
+        self.client.load_graph(graph_name=database, raise_if_loaded=False)
     except Exception as e:
       print(f"Failed to load graph: {e}")
       sys.exit(-1)
