@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+echo "WARNING: This script was intended for local use, with a cloned turingdb repo. This is probably not suitable for running on the CI, and definitely not suitable for use without a clone of the TuringDB main repo."
+
 set -euo pipefail  # Exit on error, unset vars, and fail on pipeline errors
 IFS=$'\n\t'
 
