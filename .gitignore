@@ -5,3 +5,5 @@ build
 .cache/
 turingdb.out/
 neo4j/.venv/
+*.venv*
+*__pycache__*

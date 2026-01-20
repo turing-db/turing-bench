@@ -1,5 +1,5 @@
-match (n:DatabaseObject{isChimeric:false}) return n;
-match (n:DatabaseObject{isChimeric:true}) return n;
+match (n:DatabaseObject{`isChimeric (Bool)`:false}) return n;
+match (n:DatabaseObject{`isChimeric (Bool)`:true}) return n;
 match (b)-->(a:Pathway) return a;
 match (c)-->(b)-->(a:Pathway) return a, c;
 match (c)-->(b)-->(a:Pathway) return b;
