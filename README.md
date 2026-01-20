@@ -3,9 +3,13 @@
 
 ## Usage (TuringDB)
 1. Run a TuringDB instance, noting the address where the instance can be hit
-2. Run the `turingdb_driver.py` script:
-  Example usage:
-  `python3 turingdb_driver.py --query turingdbsample.cypher --database reactome --url 'http://localhost:6666' --runs 100`
+2. Run the `turingdb_driver.py` script,
+
+Example usage:
+
+```bash
+python3 turingdb_driver.py --query turingdbsample.cypher --database reactome --url 'http://localhost:6666' --runs 100
+```
 
 This will run the queries in `turingdbsample.cypher` against the `reactome` database, running each query `100` times.
 
