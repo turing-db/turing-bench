@@ -35,8 +35,7 @@ class TuringDBDriver(AbstractDriver):
       sys.exit(-1)
 
   def close(self) -> None:
-    # TODO: Shutdown TuringDB
-    ...
+    pass
 
   
   def execute_query(self, query: str) -> List[Dict[str, Any]]:

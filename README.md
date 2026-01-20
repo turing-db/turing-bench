@@ -1,22 +1,16 @@
 # `turing-bench`
-> Benchmarking tool for TuringDB. Using the TuringDB C++ SDK.
+> Benchmarking tool for TuringDB.
 
-> This repo also includes a tool for running comparative benchmarks against Neo4j in the `neo4j/` directory.
+## Usage (TuringDB)
+1. Run a TuringDB instance, noting the address where the instance can be hit
+2. Run the `turingdb_driver.py` script:
+  Example usage:
+  `python3 turingdb_driver.py --query turingdbsample.cypher --database reactome --url 'http://localhost:6666' --runs 100`
 
-## Usage
-Build as standard Turing Biosystems project, and run `./turing-bench -h` in `build/build_package` to see command line options.
-
-Example usage:
-
-`./turing-bench --load "reactome" --query "str-prop-multihop.cypher" --runs 100 --per-query`
-
-This will run the queries in `samples/str-prop-multihop.cypher` against the `reactome` database, running each query `100` times, and reporting the stats for each individual query.
+This will run the queries in `turingdbsample.cypher` against the `reactome` database, running each query `100` times.
 
 You may specify any URL and port with a running TuringDB server using the `--url` or `-u` options. If left unspecified, `turing-bench` assumes there is a TuringDB server running locally, and attempts to query `http://127.0.0.1:6666`.
 
-## Example Query Files
-Example query files are provided in `samples/<db>`, where `<db>` is the database intended to be queried against.
-## Using Custom Query Files
-If you would like to provide your own query files, please make sure that each query is separated on a new line, with a semicolon at the end. See the samples in `samples/` for examples.
+## Usage (Other DBs)
+Other DBs can be supported by inheriting from and implementing the `AbstractDriver` class (see `drivers/neo4j_driver.py` or `drivers/turingdb_driver.py` for examples).
 
-Also ensure that you provide TuringDB CYPHER dialect queries to TuringDB benchmarks, and Neo4j-compatible CYPHER queries to Neo4j benchmarks.
