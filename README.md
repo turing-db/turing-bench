@@ -18,3 +18,12 @@ You may specify any URL and port with a running TuringDB server using the `--url
 ## Usage (Other DBs)
 Other DBs can be supported by inheriting from and implementing the `AbstractDriver` class (see `drivers/neo4j_driver.py` or `drivers/turingdb_driver.py` for examples).
 
+## Installation of other DBMSs: Neo4j and Memgraph
+
+Run the `./install.sh` script to install the necessary dependencies as well as Neo4j and Memgraph.
+
+> [!NOTE]
+> Optionnaly, run `./install.sh --clean` to run a clean install 
+
+- Run `source ./env.sh` to setup the environment variables
+

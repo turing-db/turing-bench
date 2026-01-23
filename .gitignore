@@ -7,3 +7,12 @@ turingdb.out/
 neo4j/.venv/
 *.venv*
 *__pycache__*
+
+# Neo4j and memgraph
+neo4j
+java
+maven
+neo4j-build
+*apoc*.jar
+*.csv
+memgraph
