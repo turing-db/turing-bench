@@ -1,7 +1,7 @@
 [project]
 name = "turing-bench"
 version = "0.1.0"
-description = "Add your description here"
+description = "Graph database benchmarking tool from TuringDB"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
