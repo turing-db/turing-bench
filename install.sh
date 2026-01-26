@@ -2,6 +2,10 @@
 
 set -e -u -o pipefail
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+install_dir="$script_dir/install"
+
+cd $script_dir
+source ./env.sh
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -14,24 +18,8 @@ while [[ $# -gt 0 ]]; do
       ;;
     --clean)
       echo "- Cleaning up the environment"
-      if [ -d "java" ]; then
-        rm -rf java
-      fi
-      
-      if [ -d "maven" ]; then
-        rm -rf maven
-      fi
-
-      if [ -d "neo4j" ]; then
-        rm -rf neo4j
-      fi
-
-      if [ -d "neo4j-build" ]; then
-        rm -rf neo4j-build
-      fi
-
-      if [ -d "memgraph" ]; then
-        rm -rf memgraph
+      if [ -d $install_dir ]; then
+          rm -rf "$install_dir"
       fi
 
       shift
@@ -42,6 +30,12 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [ ! -d "$install_dir" ]; then
+    mkdir "$install_dir"
+fi
+
+cd $install_dir
 
 # Download java 17
 if [ ! -d "java" ]; then
@@ -55,8 +49,7 @@ else
     echo "- Skipping Java 17 installation: already installed"
 fi
 
-cd $script_dir
-source ./env.sh
+cd $install_dir
     
 # Download maven
 if [ ! -d "maven" ]; then
@@ -70,9 +63,9 @@ else
     echo "- Skipping maven installation: already installed"
 fi
 
-cd $script_dir
+cd $install_dir
 NEO4J_VERSION=5.26.19
-NEO4J_BUILD_DIR="$script_dir/neo4j-build"
+NEO4J_BUILD_DIR="$install_dir/neo4j-build"
 
 # Download and install neo4j
 if [ ! -d "neo4j" ]; then
@@ -97,7 +90,7 @@ else
     echo "- Skipping neo4j installation: already installed"
 fi
 
-cd $script_dir
+cd $install_dir
 
 # Download and install neo4j apoc procedures
 if [ ! -f "$NEO4J_BUILD_DIR/plugins/apoc-$NEO4J_VERSION-core.jar" ]; then
@@ -109,7 +102,7 @@ else
     echo "- Skipping neo4j-apoc installation: already installed"
 fi
 
-cd $script_dir
+cd $install_dir
 
 # Download and install memgraph
 if [ ! -d "memgraph" ]; then

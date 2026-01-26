@@ -20,6 +20,9 @@ Other DBs can be supported by inheriting from and implementing the `AbstractDriv
 
 ## Installation of other DBMSs: Neo4j and Memgraph
 
+> [!WARNING]
+> The script can only be ran on Debian based systems for now.
+
 Run the `./install.sh` script to install the necessary dependencies as well as Neo4j and Memgraph.
 
 > [!NOTE]
