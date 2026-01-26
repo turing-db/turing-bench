@@ -165,27 +165,27 @@ def _get_path(env_var: str, default: str) -> str:
     return os.path.expanduser(default)
 
 
-SERVERS = [
-    ServerConfig(
+SERVERS = {
+    "turingdb": ServerConfig(
         name="TuringDB",
         start_command="bash -c 'uv run turingdb > /tmp/turingdb.log 2>&1 &'",
         start_ready_pattern="Server listening",
         log_file="/tmp/turingdb.log",
         stop_command="pkill -9 turingdb",
     ),
-    ServerConfig(
+    "neo4j": ServerConfig(
         name="Neo4j",
         start_command=f"bash -c 'source {_get_path('TURING_BENCH_HOME', '~/turing-bench')}/env.sh && neo4j start'",
         start_ready_pattern="Started neo4j",
         stop_command=f"bash -c 'source {_get_path('TURING_BENCH_HOME', '~/turing-bench')}/env.sh && neo4j stop'",
     ),
-    ServerConfig(
+    "memgraph": ServerConfig(
         name="Memgraph",
         start_command=f"bash -c '{_get_path('TURING_BENCH_INSTALL', '~/turing-bench')}/install/memgraph/usr/lib/memgraph/memgraph --log-file=./memgraph/logs/memgraph.log --data-directory=./memgraph/data/ --bolt-port=7688'",
         start_ready_pattern="You are running Memgraph v",
         stop_command="pkill -9 memgraph",
     ),
-]
+}
 
 
 def print_header(text: str) -> None:
@@ -225,9 +225,9 @@ Examples:
     args = parser.parse_args()
     
     server_map = {
-        "turingdb": [SERVERS[0]],
-        "neo4j": [SERVERS[1]],
-        "memgraph": [SERVERS[2]],
+        "turingdb": [SERVERS["turingdb"]],
+        "neo4j": [SERVERS["neo4j"]],
+        "memgraph": [SERVERS["memgraph"]],
         "all": SERVERS,
     }
     
