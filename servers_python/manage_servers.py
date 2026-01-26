@@ -156,7 +156,7 @@ class ServerManager:
                     sig = signal_map.get(config.stop_signal, signal.SIGTERM)
                     self.process.send_signal(sig)
 
-            print(f"  Waiting for process to exit...")
+            print("  Waiting for process to exit...")
             
             # Wait for process to exit if we have one
             if self.process:
@@ -189,6 +189,9 @@ class ServerManager:
         phase: str
     ) -> bool:
         """Wait for a pattern to appear in process output"""
+        if not self.process:
+            return False
+        
         print(f"  Waiting for {phase} (looking for: '{pattern}')...")
 
         start_time = time.time()
@@ -203,13 +206,13 @@ class ServerManager:
                         if remaining:
                             self.output_buffer += remaining
                             print(f"    {remaining.rstrip()}")
-                    except:
+                    except Exception:
                         pass
                 
                 if pattern in self.output_buffer:
                     return True
                 
-                print(f"  ✗ Process exited before message found")
+                print("  ✗ Process exited before message found")
                 return False
 
             # Read available output
@@ -346,7 +349,6 @@ Examples:
         print("No servers selected")
         sys.exit(1)
     
-    action_text = args.action.capitalize()
     if len(servers_to_manage) == 1:
         server_name = servers_to_manage[0].name
         if failed:
