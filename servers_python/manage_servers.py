@@ -9,9 +9,10 @@ import time
 import signal
 import sys
 import os
+import argparse
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Callable
+from typing import Optional
 
 
 @dataclass
@@ -35,6 +36,34 @@ class ServerManager:
     def __init__(self):
         self.process: Optional[subprocess.Popen] = None
         self.output_buffer = ""
+        self.pid_dir = Path.home() / ".turing-bench"
+        self.pid_dir.mkdir(exist_ok=True)
+
+    def _get_pid_file(self, server_name: str) -> Path:
+        """Get the PID file path for a server"""
+        return self.pid_dir / f"{server_name.lower()}.pid"
+
+    def _save_pid(self, server_name: str, pid: int) -> None:
+        """Save the PID to a file"""
+        pid_file = self._get_pid_file(server_name)
+        pid_file.write_text(str(pid))
+        print(f"  PID saved to {pid_file}")
+
+    def _load_pid(self, server_name: str) -> Optional[int]:
+        """Load the PID from a file"""
+        pid_file = self._get_pid_file(server_name)
+        if pid_file.exists():
+            try:
+                return int(pid_file.read_text().strip())
+            except (ValueError, IOError):
+                return None
+        return None
+
+    def _remove_pid_file(self, server_name: str) -> None:
+        """Remove the PID file"""
+        pid_file = self._get_pid_file(server_name)
+        if pid_file.exists():
+            pid_file.unlink()
 
     def start(self, config: ServerConfig) -> bool:
         """Start a server and wait for it to be ready"""
@@ -56,6 +85,9 @@ class ServerManager:
                 env=env,
             )
 
+            # Save the PID for later use
+            self._save_pid(config.name, self.process.pid)
+
             # Wait for ready signal if specified
             if config.start_ready_pattern:
                 if not self._wait_for_pattern(
@@ -75,9 +107,19 @@ class ServerManager:
 
     def stop(self, config: ServerConfig) -> bool:
         """Stop a server gracefully"""
+        # Try to load the PID from file if process is not loaded
         if not self.process or self.process.poll() is not None:
-            print(f"⚠ {config.name} is not running")
-            return False
+            saved_pid = self._load_pid(config.name)
+            if saved_pid:
+                print(f"  Found saved PID: {saved_pid}")
+                # For a saved PID, we can't interact with it directly via stdin
+                # We'll use the stop_command or stop_signal instead
+                self.process = None
+            
+            if not self.process and not saved_pid:
+                print(f"⚠ {config.name} is not running")
+                self._remove_pid_file(config.name)
+                return False
 
         print(f"Stopping {config.name}...")
 
@@ -91,12 +133,13 @@ class ServerManager:
                     capture_output=True,
                     text=True
                 )
-                if result.returncode != 0:
+                if result.returncode != 0 and result.returncode != -15:
                     print(f"  Warning: stop command returned {result.returncode}")
                     if result.stderr:
                         print(f"  Error: {result.stderr}")
             # Use stop_input if provided (e.g., "exit\n" for interactive shells)
-            elif config.stop_input:
+            # Only works if we have an active process with stdin
+            elif config.stop_input and self.process and self.process.stdin:
                 print(f"  Sending: {repr(config.stop_input)}")
                 try:
                     self.process.stdin.write(config.stop_input)
@@ -105,22 +148,32 @@ class ServerManager:
                     print(f"  Warning: Could not send input: {e}")
             else:
                 # Send signal for graceful shutdown
-                signal_map = {
-                    "SIGTERM": signal.SIGTERM,
-                    "SIGINT": signal.SIGINT,
-                }
-                sig = signal_map.get(config.stop_signal, signal.SIGTERM)
-                self.process.send_signal(sig)
+                if self.process:
+                    signal_map = {
+                        "SIGTERM": signal.SIGTERM,
+                        "SIGINT": signal.SIGINT,
+                    }
+                    sig = signal_map.get(config.stop_signal, signal.SIGTERM)
+                    self.process.send_signal(sig)
 
             print(f"  Waiting for process to exit...")
             
-            # Wait for process to exit
-            self.process.wait()
+            # Wait for process to exit if we have one
+            if self.process:
+                self.process.wait()
+            else:
+                # If we don't have a process object, wait a bit for the stop command to take effect
+                time.sleep(1)
+            
+            # Remove the PID file
+            self._remove_pid_file(config.name)
+            
             print(f"✓ {config.name} stopped")
             return True
 
         except Exception as e:
             print(f"✗ Failed to stop {config.name}: {e}")
+            self._remove_pid_file(config.name)
             return False
 
     def terminate(self):
@@ -191,25 +244,28 @@ def _get_path(env_var: str, default: str) -> str:
 SERVERS = [
     ServerConfig(
         name="TuringDB",
-        start_command="uv run turingdb",
+        start_command=f"cd {_get_path('TURINGDB_HOME', '~/turingdb-python')} && uv run turingdb",
         stop_signal="SIGINT",
         start_ready_pattern="Server listening",
         stop_pattern="",
+        stop_timeout=5,
         stop_input="exit\n",  # Send "exit" to the interactive prompt
     ),
     ServerConfig(
         name="Neo4j",
-        start_command="bash -c 'source env.sh && neo4j start'",
+        start_command=f"bash -c 'source {_get_path('TURING_BENCH_HOME', '~/turing-bench')}/env.sh && neo4j start'",
         stop_signal="SIGINT",
         start_ready_pattern="Started neo4j",
-        stop_command="bash -c 'source env.sh && neo4j stop'",  # Run separate stop command
+        stop_command=f"bash -c 'source {_get_path('TURING_BENCH_HOME', '~/turing-bench')}/env.sh && neo4j stop'",
+        stop_pattern="",
     ),
     ServerConfig(
         name="Memgraph",
         start_command=f"bash -c '{_get_path('TURING_BENCH_INSTALL', '~/turing-bench')}/install/memgraph/usr/lib/memgraph/memgraph --log-file=./memgraph/logs/memgraph.log --data-directory=./memgraph/data/ --bolt-port=7688'",
         stop_signal="SIGINT",
         start_ready_pattern="You are running Memgraph v",
-        stop_command="pkill -f memgraph",  # Force kill memgraph process
+        stop_command="pkill -f memgraph",
+        stop_pattern="",
     ),
 ]
 
@@ -231,32 +287,81 @@ def print_section_header(text: str) -> None:
 
 
 def main():
-    """Main orchestration function"""
+    """Main orchestration function with CLI argument support"""
+    parser = argparse.ArgumentParser(
+        description="Manage database servers (TuringDB, Neo4j, Memgraph)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s turingdb start          # Start TuringDB
+  %(prog)s neo4j stop              # Stop Neo4j
+  %(prog)s memgraph start          # Start Memgraph
+  %(prog)s all start               # Start all servers
+  %(prog)s all stop                # Stop all servers
+        """
+    )
+    
+    parser.add_argument(
+        "server",
+        choices=["turingdb", "neo4j", "memgraph", "all"],
+        help="Server to manage (or 'all' for all servers)"
+    )
+    
+    parser.add_argument(
+        "action",
+        choices=["start", "stop"],
+        help="Action to perform"
+    )
+    
+    args = parser.parse_args()
+    
+    # Get the servers to manage
+    server_map = {
+        "turingdb": [SERVERS[0]],
+        "neo4j": [SERVERS[1]],
+        "memgraph": [SERVERS[2]],
+        "all": SERVERS,
+    }
+    
+    servers_to_manage = server_map[args.server]
+    
+    # Perform the action
     manager = ServerManager()
     failed = False
-
-    for config in SERVERS:
-        print_tool_header(config.name)
-
-        # Start
-        print_section_header("Starting")
-        if not manager.start(config):
-            failed = True
-            continue
-
-        # Stop
-        print_section_header("Stopping")
-        if not manager.stop(config):
-            failed = True
-
+    
+    for config in servers_to_manage:
+        if args.action == "start":
+            print_tool_header(config.name)
+            print_section_header("Starting")
+            if not manager.start(config):
+                failed = True
+        else:  # stop
+            print_tool_header(config.name)
+            print_section_header("Stopping")
+            if not manager.stop(config):
+                failed = True
+    
     # Final message
-    print_tool_header("Complete")
-    if failed:
-        print("⚠ Some servers failed!")
+    if not servers_to_manage:
+        print("No servers selected")
         sys.exit(1)
+    
+    action_text = args.action.capitalize()
+    if len(servers_to_manage) == 1:
+        server_name = servers_to_manage[0].name
+        if failed:
+            print(f"⚠ Failed to {args.action} {server_name}!")
+            sys.exit(1)
+        else:
+            print(f"✓ {server_name} {args.action}ed successfully!")
+            sys.exit(0)
     else:
-        print("✓ All servers started and stopped successfully!")
-        sys.exit(0)
+        if failed:
+            print(f"⚠ Some servers failed to {args.action}!")
+            sys.exit(1)
+        else:
+            print(f"✓ All servers {args.action}ed successfully!")
+            sys.exit(0)
 
 
 if __name__ == "__main__":
