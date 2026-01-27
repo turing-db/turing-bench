@@ -58,10 +58,40 @@ class ServerManager:
         if pid_file.exists():
             pid_file.unlink()
 
+    def _is_process_alive(self, pid: int) -> bool:
+        """Check if a process with the given PID is actually running"""
+        ps_running = subprocess.run(f"ps -p {pid}", shell=True, stdout=subprocess.PIPE).returncode
+        return ps_running == 0
+
+    def _is_neo4j_running(self) -> bool:
+        """Check if Neo4j is actually running"""
+        result = subprocess.run(
+            "ps aux | grep 'org.neo4j.server.CommunityEntryPoint' | grep -v grep",
+            shell=True,
+            capture_output=True
+        )
+        return result.returncode == 0
+
     def start(self, config: ServerConfig) -> bool:
         """Start a server and wait for it to be ready"""
+        
+        # Special handling for Neo4j - check by process name instead of PID
+        if config.name == "Neo4j":
+            if self._is_neo4j_running():
+                print(f"⚠ {config.name} is already running")
+                return False
+        else:
+            # Original logic for TuringDB and Memgraph
+            saved_pid = self._load_pid(config.name)
+            
+            if saved_pid and self._is_process_alive(saved_pid):
+                print(f"⚠ {config.name} is already running")
+                return False
+            elif saved_pid:
+                self._remove_pid_file(config.name)
+        
         print(f"Starting {config.name}...")
-
+        
         try:
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
