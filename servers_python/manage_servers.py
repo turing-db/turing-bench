@@ -173,7 +173,7 @@ SERVERS = {
         start_command="uv run turingdb",
         start_ready_pattern="Server listening",
         log_file="/tmp/turingdb.log",
-        stop_command="ps aux | grep turingdb | grep -v grep | awk '{print $2}' | xargs kill -9",
+        stop_command="pkill -9 turingdb",
     ),
     "neo4j": ServerConfig(
         name="Neo4j",
@@ -185,7 +185,7 @@ SERVERS = {
         name="Memgraph",
         start_command=f"{install_folder}/memgraph/usr/lib/memgraph/memgraph --log-file={install_folder}/memgraph/logs/memgraph.log --data-directory={install_folder}/memgraph/data/ --bolt-port=7688",
         start_ready_pattern="You are running Memgraph v",
-        stop_command="ps aux | grep memgraph | grep -v grep | awk '{print $2}' | xargs kill -9",
+        stop_command="pkill -9 memgraph",
     ),
 }
 
