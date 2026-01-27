@@ -31,7 +31,7 @@ class ServerManager:
 
     def __init__(self):
         self.process: Optional[subprocess.Popen] = None
-        self.pid_dir = Path.home() / ".turing-bench"
+        self.pid_dir = Path(__file__).parent / ".cache"
         self.pid_dir.mkdir(exist_ok=True)
 
     def _get_pid_file(self, server_name: str) -> Path:
