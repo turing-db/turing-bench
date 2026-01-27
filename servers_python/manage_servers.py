@@ -60,8 +60,8 @@ class ServerManager:
 
     def _is_process_alive(self, pid: int) -> bool:
         """Check if a process with the given PID is actually running"""
-        ps_running = subprocess.run(f"ps -p {pid}", shell=True, stdout=subprocess.PIPE).returncode
-        return ps_running == 0
+        result = subprocess.run(f"ps -p {pid}", shell=True, stdout=subprocess.PIPE)
+        return result.returncode == 0
 
     def _is_neo4j_running(self) -> bool:
         """Check if Neo4j is actually running"""
