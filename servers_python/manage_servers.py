@@ -56,7 +56,7 @@ class ServerManager:
         """Remove the PID file"""
         pid_file = self._get_pid_file(server_name)
         if pid_file.exists():
-            pid_file.remove()
+            pid_file.unlink()
 
     def start(self, config: ServerConfig) -> bool:
         """Start a server and wait for it to be ready"""
@@ -158,30 +158,32 @@ class ServerManager:
 
 
 # Server configurations
-def _get_path(env_var: str, default: str) -> str:
-    """Get path from environment variable or use default with ~ expansion"""
-    if env_var in os.environ:
-        return os.environ[env_var]
-    return os.path.expanduser(default)
+def _get_repo_root() -> Path:
+    """Get the absolute path to the repository root"""
+    # Script is at servers_python/manage_servers.py
+    return Path(__file__).parent.parent
+
+repo_root = _get_repo_root()
+install_folder = (repo_root / "install").absolute()
 
 
 SERVERS = {
     "turingdb": ServerConfig(
         name="TuringDB",
-        start_command="bash -c 'uv run turingdb > /tmp/turingdb.log 2>&1 &'",
+        start_command="uv run turingdb",
         start_ready_pattern="Server listening",
         log_file="/tmp/turingdb.log",
         stop_command="pkill -9 turingdb",
     ),
     "neo4j": ServerConfig(
         name="Neo4j",
-        start_command=f"bash -c 'source {_get_path('TURING_BENCH_HOME', '~/turing-bench')}/env.sh && neo4j start'",
+        start_command=f"bash -c 'source {repo_root}/env.sh && neo4j start'", 
         start_ready_pattern="Started neo4j",
-        stop_command=f"bash -c 'source {_get_path('TURING_BENCH_HOME', '~/turing-bench')}/env.sh && neo4j stop'",
+        stop_command=f"bash -c 'source {repo_root}/env.sh && neo4j stop'",
     ),
     "memgraph": ServerConfig(
         name="Memgraph",
-        start_command=f"bash -c '{_get_path('TURING_BENCH_INSTALL', '~/turing-bench')}/install/memgraph/usr/lib/memgraph/memgraph --log-file=./memgraph/logs/memgraph.log --data-directory=./memgraph/data/ --bolt-port=7688'",
+        start_command=f"bash -c 'source {repo_root}/env.sh && memgraph --log-file={install_folder}/memgraph/logs/memgraph.log --data-directory={install_folder}/memgraph/data/ --bolt-port=7688'",
         start_ready_pattern="You are running Memgraph v",
         stop_command="pkill -9 memgraph",
     ),
