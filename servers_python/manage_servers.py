@@ -56,7 +56,7 @@ class ServerManager:
         """Remove the PID file"""
         pid_file = self._get_pid_file(server_name)
         if pid_file.exists():
-            pid_file.unlink()
+            pid_file.remove()
 
     def start(self, config: ServerConfig) -> bool:
         """Start a server and wait for it to be ready"""
@@ -171,7 +171,7 @@ SERVERS = {
         start_command="bash -c 'uv run turingdb > /tmp/turingdb.log 2>&1 &'",
         start_ready_pattern="Server listening",
         log_file="/tmp/turingdb.log",
-        stop_command="killall -9 turingdb",
+        stop_command="pkill -9 turingdb",
     ),
     "neo4j": ServerConfig(
         name="Neo4j",
@@ -183,7 +183,7 @@ SERVERS = {
         name="Memgraph",
         start_command=f"bash -c '{_get_path('TURING_BENCH_INSTALL', '~/turing-bench')}/install/memgraph/usr/lib/memgraph/memgraph --log-file=./memgraph/logs/memgraph.log --data-directory=./memgraph/data/ --bolt-port=7688'",
         start_ready_pattern="You are running Memgraph v",
-        stop_command="killall -9 memgraph",
+        stop_command="pkill -9 memgraph",
     ),
 }
 
