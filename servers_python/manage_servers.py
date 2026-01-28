@@ -132,7 +132,6 @@ class ServerManager:
 
         if config.stop_command:
             subprocess.run(config.stop_command, shell=True, capture_output=True)
-            time.sleep(0.5)
         elif config.stop_input:
             if self.process and self.process.stdin:
                 try:
@@ -142,9 +141,37 @@ class ServerManager:
                 except Exception:
                     pass
 
+        # Verify server actually stopped (handles both blocking and non-blocking stop commands)
+        if not self._verify_server_stopped(config):
+            print(f"✗ Failed to stop {config.name} within timeout")
+            return False
+        
         self._remove_pid_file(config.name)
         print(f"✓ {config.name} stopped")
         return True
+
+    def _verify_server_stopped(self, config: ServerConfig, timeout: int = 60, check_interval: float = 0.5) -> bool:
+        """Verify that a server has actually stopped within timeout"""
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            # Check if server is still running based on server type
+            if config.name == "Neo4j":
+                is_running = self._is_neo4j_running()
+            else:
+                # For TuringDB and Memgraph
+                saved_pid = self._load_pid(config.name)
+                is_running = saved_pid and self._is_process_alive(saved_pid)
+            
+            # If server is stopped, we're done
+            if not is_running:
+                return True
+            
+            # Still running, wait a bit and check again
+            time.sleep(check_interval)
+        
+        # Timeout reached and server is still running
+        return False
 
     def _wait_for_pattern(self, pattern: str, timeout: int, log_file: Optional[str] = None) -> bool:
         """Wait for a pattern in process output or log file"""
