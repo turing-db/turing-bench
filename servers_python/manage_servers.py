@@ -161,7 +161,7 @@ class ServerManager:
             else:
                 # For TuringDB and Memgraph
                 saved_pid = self._load_pid(config.name)
-                is_running = saved_pid and self._is_process_alive(saved_pid)
+                is_running = saved_pid is not None and self._is_process_alive(saved_pid)
             
             # If server is stopped, we're done
             if not is_running:
@@ -287,7 +287,7 @@ Examples:
         "turingdb": [SERVERS["turingdb"]],
         "neo4j": [SERVERS["neo4j"]],
         "memgraph": [SERVERS["memgraph"]],
-        "all": SERVERS,
+        "all": list(SERVERS.values()),
     }
     
     servers_to_manage = server_map[args.server]
