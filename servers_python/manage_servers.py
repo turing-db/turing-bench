@@ -110,8 +110,12 @@ class ServerManager:
             self._save_pid(config.name, self.process.pid)
 
             if config.start_ready_pattern:
-                if not self._wait_for_pattern(config.start_ready_pattern, config.start_timeout, config.log_file):
-                    return False
+                if config.name == "Memgraph":
+                    if not self._wait_for_memgraph_ready():
+                        return False
+                else:
+                    if not self._wait_for_pattern(config.start_ready_pattern, config.start_timeout, config.log_file):
+                        return False
 
             print(f"✓ {config.name} started")
             return True
@@ -171,6 +175,25 @@ class ServerManager:
             time.sleep(check_interval)
         
         # Timeout reached and server is still running
+        return False
+
+    def _wait_for_memgraph_ready(self) -> bool:
+        """Wait for Memgraph to be ready"""
+        start_time = time.time()
+        
+        while time.time() - start_time < 20:
+            if self.process and self.process.poll() is not None:
+                return False
+            
+            try:
+                res = subprocess.run(f"echo 'RETURN 1;' | mgconsole --port 7688", shell=True, capture_output=True)
+                if res.returncode == 0:
+                    return True
+
+                time.sleep(0.5)
+            except Exception:
+                pass
+
         return False
 
     def _wait_for_pattern(self, pattern: str, timeout: int, log_file: Optional[str] = None) -> bool:
@@ -304,7 +327,11 @@ Examples:
             if not manager.stop(config):
                 failed = True
     
-    sys.exit(1 if failed else 0)
+    if failed:
+        print(f"✗ Server {args.server} failed to {args.action}")
+        sys.exit(1)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":
