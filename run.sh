@@ -6,7 +6,7 @@ shopt -s expand_aliases
 GIT_ROOT="$(git rev-parse --show-toplevel)"
 source "$GIT_ROOT/env.sh"
 
-DATASET=${1-simpledb}
+DATASET=${1-reactome}
 
 cd $SCRIPTS
 alias uvrun="uv run --directory $GIT_ROOT python -m turingbench"
@@ -14,6 +14,10 @@ alias uvrun="uv run --directory $GIT_ROOT python -m turingbench"
 uv run python manage_servers.py turingdb stop > /dev/null || true
 uv run python manage_servers.py neo4j stop > /dev/null || true
 uv run python manage_servers.py memgraph stop > /dev/null || true
+
+./switch-dataset.sh $DATASET turingdb
+./switch-dataset.sh $DATASET neo4j
+./switch-dataset.sh $DATASET memgraph
 
 # TuringDB benchmark
 uv run python manage_servers.py turingdb start || true

@@ -86,8 +86,14 @@ bench memgraph stop || true
 
 # Removing old memgraph data dir
 start=`date +%s`
-echo "- Removing old memgraph data dir..."
-rm -rf $MEMGRAPH_DATA_DIR
+if [ -L "$MEMGRAPH_DATA_DIR" ]; then
+    echo "Removing old memgraph data symbolic link..."
+    rm $MEMGRAPH_DATA_DIR
+elif [ -d "$MEMGRAPH_DATA_DIR" ]; then
+    echo "Remove old memgraph data dir..."
+    rm -r $MEMGRAPH_DATA_DIR
+fi
+
 end=`date +%s`
 runtime=$((end-start))
 echo "- Removing old memgraph data dir took $runtime seconds"
