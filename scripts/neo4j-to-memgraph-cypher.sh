@@ -73,7 +73,7 @@ echo "- Exporting nodes/edges took $runtime seconds"
 
 start=`date +%s`
 echo "- Writing full script to output.cypher..."
-cat /tmp/script.cypher >> /tmp/outpuert.cypher
+cat /tmp/script.cypher >> /tmp/output.cypher
 end=`date +%s`
 runtime=$((end-start))
 echo "- Writing full script took $runtime seconds"
