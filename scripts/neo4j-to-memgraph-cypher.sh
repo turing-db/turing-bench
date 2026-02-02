@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+shopt -s expand_aliases
 
-source ./env.sh
+REPO_ROOT=$(git rev-parse --show-toplevel)
+source "$REPO_ROOT/env.sh"
 
 # Fail if mgconsole is installed
 if [ ! command -v mgconsole &> /dev/null ]; then
@@ -12,7 +14,7 @@ if [ ! command -v mgconsole &> /dev/null ]; then
 fi
 
 # Run neo4j if not already running
-uv run servers_python/manage_servers.py neo4j start || true
+bench neo4j start || true
 
 start=`date +%s`
 # Export constraints
@@ -27,7 +29,7 @@ awk -F', ' 'NR > 1 {
     gsub(/"/, "", $2);
     if ($1 && $2)
         print "CREATE CONSTRAINT ON (node:" $1 ") ASSERT node." $2 " IS UNIQUE;"
-}' > ./output.cypher
+}' > /tmp/output.cypher
 
 # Export indexes
 cypher-shell "SHOW INDEXES 
@@ -39,7 +41,7 @@ awk -F', ' 'NR > 1 {
     gsub(/"/, "", $3);
     if ($2 && $3)
         print "CREATE INDEX ON :" $2 "(" $3 ");"
-}' >> ./output.cypher
+}' >> /tmp/output.cypher
 
 end=`date +%s`
 runtime=$((end-start))
@@ -55,10 +57,11 @@ cypher-shell 'CALL apoc.export.cypher.all("script.cypher", {
 })
 YIELD file, batches, source, format, nodes, relationships, properties, time, rows, batchSize
 RETURN file, batches, source, format, nodes, relationships, properties, time, rows, batchSize;'
+mv "$NEO4J_IMPORT/script.cypher" /tmp
 
-sed -i 's/CREATE.*INDEX.*FOR (.*:\(.*\)) ON (.*\.\(.*\))/CREATE INDEX ON :\1(\2)/' ./install/neo4j-build/import/script.cypher
-sed -i 's/CREATE CONSTRAINT.*FOR (.*:\(.*\)).*REQUIRE.*(.*\.\(.*\)) IS UNIQUE;/CREATE CONSTRAINT ON (node:\1) ASSERT node.\2 IS UNIQUE;\nCREATE INDEX ON :\1(\2);/' ./install/neo4j-build/import/script.cypher
-sed -i 's/DROP CONSTRAINT.*//' ./install/neo4j-build/import/script.cypher
+sed -i 's/CREATE.*INDEX.*FOR (.*:\(.*\)) ON (.*\.\(.*\))/CREATE INDEX ON :\1(\2)/' /tmp/script.cypher
+sed -i 's/CREATE CONSTRAINT.*FOR (.*:\(.*\)).*REQUIRE.*(.*\.\(.*\)) IS UNIQUE;/CREATE CONSTRAINT ON (node:\1) ASSERT node.\2 IS UNIQUE;\nCREATE INDEX ON :\1(\2);/' /tmp/script.cypher
+sed -i 's/DROP CONSTRAINT.*//' /tmp/script.cypher
 
 end=`date +%s`
 runtime=$((end-start))
@@ -66,35 +69,35 @@ echo "- Exporting nodes/edges took $runtime seconds"
 
 start=`date +%s`
 echo "- Writing full script to output.cypher..."
-cat ./install/neo4j-build/import/script.cypher >> ./output.cypher
+cat /tmp/script.cypher >> /tmp/output.cypher
 end=`date +%s`
 runtime=$((end-start))
 echo "- Writing full script took $runtime seconds"
 
 # Stop neo4j
-uv run servers_python/manage_servers.py neo4j stop || true
+bench neo4j stop || true
 
 # Ensure memgraph is stopped
-uv run servers_python/manage_servers.py memgraph stop || true
+bench memgraph stop || true
 
 # Removing old memgraph data dir
 start=`date +%s`
 echo "- Removing old memgraph data dir..."
-rm -rf ./install/memgraph/data
+rm -rf $MEMGRAPH_DATA_DIR
 end=`date +%s`
 runtime=$((end-start))
 echo "- Removing old memgraph data dir took $runtime seconds"
 
 # Start memgraph
-uv run servers_python/manage_servers.py memgraph start || true
+bench memgraph start || true
 
 # Import script
 start=`date +%s`
 echo "- Importing script in memgraph..."
 
-mgconsole --port 7688 < ./output.cypher &
+mgconsole --port 7688 < /tmp/output.cypher &
 
-./check-progress.sh
+"$SCRIPTS/check-progress.sh"
 
 end=`date +%s`
 runtime=$((end-start))
