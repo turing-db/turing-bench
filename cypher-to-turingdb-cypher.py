@@ -20,10 +20,3 @@ if __name__ == "__main__":
             for line in inp:
                 line = line.strip()
                 print(line)
-                break
-
-
-                if i > 200:
-                    break
-
-                i += 1
