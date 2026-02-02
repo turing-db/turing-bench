@@ -7,19 +7,20 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 source "$REPO_ROOT/env.sh"
 
 JSON_FILE=/tmp/output.json
-TDB_CYPHER_FILE=simpledb.tbdcypher  # reactome.tbdcypher
+TDB_CYPHER_FILE=reactome.tbdcypher
+SAVE_PATH="$DUMPS/reactome.turingdb"
 
-# Check if TURING_HOME is set
-if [ -z "$TURING_HOME" ]; then
-    echo "TURING_HOME is not set. Please set it to the TuringDB installation directory."
+if [ -d "$SAVE_PATH" ]; then
+    echo "Reactome dump already exists in $SAVE_PATH. Skipping..."
     exit 1
 fi
 
-# Load reactome in turingdb
-if [ -d "$TURINGDB_DIR" ]; then
-    echo "TuringDB directory already exists at $TURINGDB_DIR"
+if [ -L "$TURINGDB_DIR" ]; then
+    echo "Removing old TuringDB symbolic link..."
+    rm "$TURINGDB_DIR"
+elif [ -d "$TURINGDB_DIR" ]; then
     echo "Removing existing TuringDB directory..."
-    rm -rf "$TURINGDB_DIR"
+    rm -r "$TURINGDB_DIR"
 fi
 
 mkdir -p $TURINGDB_DATA_DIR
@@ -31,3 +32,6 @@ uv run "$SCRIPTS/cypher-to-turingdb-cypher.py" $JSON_FILE --output-file "$TURING
 # Create TuringDB graph using generated cypher script
 uv run turingdb -turing-dir $TURINGDB_DIR < "$TURINGDB_DATA_DIR/$TDB_CYPHER_FILE"
 echo "Reactome successfully created in TuringDB."
+
+cp -r "$TURINGDB_DIR" "$SAVE_PATH"
+echo "Reactome dump successfully stored in $SAVE_PATH directory."
