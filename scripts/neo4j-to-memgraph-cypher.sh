@@ -99,7 +99,7 @@ bench memgraph start || true
 start=`date +%s`
 echo "- Importing script in memgraph..."
 
-mgconsole --port 7688 < /tmp/output.cypher &
+mgconsole --port 7687 < /tmp/output.cypher &
 
 "$SCRIPTS/check-progress.sh"
 
