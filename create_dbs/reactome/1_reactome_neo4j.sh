@@ -6,6 +6,9 @@ shopt -s expand_aliases
 REPO_ROOT=$(git rev-parse --show-toplevel)
 source "$REPO_ROOT/env.sh"
 
+DUMP_FILE="simpledb-4.3.dump"  # "reactome.dump"
+DUMP_PATH="$NEO4J_IMPORT/$DUMP_FILE"
+
 # Stop Neo4j
 bench neo4j stop || true
 
@@ -19,7 +22,7 @@ fi
 
 # Load reactome in neo4j
 echo "Loading Reactome dump into Neo4j..."
-cat "$NEO4J_IMPORT/reactome.dump" | neo4j-admin database load --from-stdin neo4j --overwrite-destination=true
+cat $DUMP_PATH | neo4j-admin database load --from-stdin neo4j --overwrite-destination=true
 echo "Reactome successfully loaded in Neo4j."
 
 # Migrate reactome from neo4j v4 to v5
