@@ -59,6 +59,10 @@ YIELD file, batches, source, format, nodes, relationships, properties, time, row
 RETURN file, batches, source, format, nodes, relationships, properties, time, rows, batchSize;'
 mv "$NEO4J_IMPORT/script.cypher" /tmp
 
+cypher-shell 'CALL apoc.export.json.all("output.json",{useTypes:true});'
+
+mv "$NEO4J_IMPORT/output.json" /tmp
+
 sed -i 's/CREATE.*INDEX.*FOR (.*:\(.*\)) ON (.*\.\(.*\))/CREATE INDEX ON :\1(\2)/' /tmp/script.cypher
 sed -i 's/CREATE CONSTRAINT.*FOR (.*:\(.*\)).*REQUIRE.*(.*\.\(.*\)) IS UNIQUE;/CREATE CONSTRAINT ON (node:\1) ASSERT node.\2 IS UNIQUE;\nCREATE INDEX ON :\1(\2);/' /tmp/script.cypher
 sed -i 's/DROP CONSTRAINT.*//' /tmp/script.cypher
@@ -69,7 +73,7 @@ echo "- Exporting nodes/edges took $runtime seconds"
 
 start=`date +%s`
 echo "- Writing full script to output.cypher..."
-cat /tmp/script.cypher >> /tmp/output.cypher
+cat /tmp/script.cypher >> /tmp/outpuert.cypher
 end=`date +%s`
 runtime=$((end-start))
 echo "- Writing full script took $runtime seconds"
