@@ -12,8 +12,7 @@ DUMP_URL="https://reactome.org/download/current/reactome.graphdb.dump"
 if [ ! -f "$DUMP_FILE" ]; then
     echo "Downloading Reactome dump..."
     wget -O "$DUMP_FILE" "$DUMP_URL"
+    echo "Reactome dump downloaded."
 else
     echo "Reactome dump already exists at $DUMP_FILE"
 fi
-
-echo "Reactome dump downloaded."
