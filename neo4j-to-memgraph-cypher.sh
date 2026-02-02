@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+source ./env.sh
+
 # Fail if mgconsole is installed
 if [ ! command -v mgconsole &> /dev/null ]; then
     echo "! mgconsole was not found, please source the env.sh script"
@@ -54,8 +56,9 @@ cypher-shell 'CALL apoc.export.cypher.all("script.cypher", {
 YIELD file, batches, source, format, nodes, relationships, properties, time, rows, batchSize
 RETURN file, batches, source, format, nodes, relationships, properties, time, rows, batchSize;'
 
-sed -i '/.*CREATE CONSTRAINT.*/d' ./install/neo4j-build/import/script.cypher
-sed -i '/.*CREATE .* INDEX.*/d' ./install/neo4j-build/import/script.cypher
+sed -i 's/CREATE.*INDEX.*FOR (.*:\(.*\)) ON (.*\.\(.*\))/CREATE INDEX ON :\1(\2)/' ./install/neo4j-build/import/script.cypher
+sed -i 's/CREATE CONSTRAINT.*FOR (.*:\(.*\)).*REQUIRE.*(.*\.\(.*\)) IS UNIQUE;/CREATE CONSTRAINT ON (node:\1) ASSERT node.\2 IS UNIQUE;\nCREATE INDEX ON :\1(\2);/' ./install/neo4j-build/import/script.cypher
+sed -i 's/DROP CONSTRAINT.*//' ./install/neo4j-build/import/script.cypher
 
 end=`date +%s`
 runtime=$((end-start))
@@ -89,7 +92,10 @@ uv run servers_python/manage_servers.py memgraph start || true
 start=`date +%s`
 echo "- Importing script in memgraph..."
 
-mgconsole --port 7688 < ./output.cypher
+mgconsole --port 7688 < ./output.cypher &
+
+./check-progress.sh
+
 end=`date +%s`
 runtime=$((end-start))
 echo "- Importing script took $runtime seconds"
