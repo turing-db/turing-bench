@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
-uv run servers_python/manage_servers.py neo4j start 2>&1 > /dev/null
+set -euo pipefail
+shopt -s expand_aliases
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+source "$REPO_ROOT/env.sh"
+
+bench neo4j start 2>&1 > /dev/null
 neooutput=$(cypher-shell 'MATCH (n) RETURN count(n); MATCH ()-[r]->() RETURN count(r);')
 nodeCount=$(echo "$neooutput" | head -n 2 | tail -n 1)
 edgeCount=$(echo "$neooutput" | tail -n 1)
-uv  run servers_python/manage_servers.py neo4j stop 2>&1 > /dev/null
+bench neo4j stop 2>&1 > /dev/null
 
 while true; do
     memoutput=$(echo 'MATCH (n) RETURN count(n); MATCH ()-[r]->() RETURN count(r);' | mgconsole --port 7688)
