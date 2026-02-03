@@ -1,0 +1,15 @@
+MATCH (n) RETURN n;
+MATCH (p:Person) RETURN p;
+MATCH (p:Person) RETURN count(p);
+MATCH (c:Crime) RETURN c;
+MATCH (c:Crime) RETURN count(c);
+MATCH ()-[r]->() RETURN r;
+MATCH ()-[r]->() RETURN count(r);
+MATCH (p:Person {name: 'John'})-[:PARTY_TO]->(c:Crime) RETURN p, c;
+MATCH (p:Person)-[:PARTY_TO]->(c:Crime) RETURN p.name, p.surname, c.type;
+MATCH (p:Person {surname: 'Smith'})-[r]->(n) RETURN p;
+MATCH (p:Person)-[r]->(n) WHERE p.surname = 'Smith' RETURN p;
+MATCH (p1:Person)-[:PARTY_TO]->(c:Crime)<-[:PARTY_TO]-(p2:Person) WHERE p1 <> p2 RETURN p1.name, p2.name, c.type;
+MATCH (p1:Person)-[:KNOWS]->(p2:Person)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name;
+MATCH (c:Crime)-[:OCCURRED_AT]->(l:Location) RETURN l.postcode;
+MATCH (p1)-[:PARTY_TO]->(c:Crime), (p2)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name, c.type;
