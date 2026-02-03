@@ -7,29 +7,36 @@ GIT_ROOT="$(git rev-parse --show-toplevel)"
 source "$GIT_ROOT/env.sh"
 
 DATASET=${1-reactome}
+QUERY_FILE=${2-queries_$DATASET.cypher}
+QUERY_FILE_PATH="$QUERIES_DIR/$DATASET/$QUERY_FILE"
+
+if [ ! -f $QUERY_FILE_PATH ]; then
+    echo "Query file $QUERY_FILE_PATH does not exist"
+    exit 1
+fi
 
 cd $SCRIPTS
 alias uvrun="uv run --directory $GIT_ROOT python -m turingbench"
 
-uv run python manage_servers.py turingdb stop > /dev/null || true
-uv run python manage_servers.py neo4j stop > /dev/null || true
-uv run python manage_servers.py memgraph stop > /dev/null || true
+bench turingdb stop > /dev/null || true
+bench neo4j stop > /dev/null || true
+bench memgraph stop > /dev/null || true
 
-./switch-dataset.sh $DATASET turingdb
-./switch-dataset.sh $DATASET neo4j
-./switch-dataset.sh $DATASET memgraph
+$SCRIPTS/switch-dataset.sh $DATASET turingdb
+$SCRIPTS/switch-dataset.sh $DATASET neo4j
+$SCRIPTS/switch-dataset.sh $DATASET memgraph
 
 # TuringDB benchmark
-uv run python manage_servers.py turingdb start || true
-uvrun turingdb --query-file "$QUERIES_DIR/$DATASET/labelsets.cypher"
-uv run python manage_servers.py turingdb stop
+bench turingdb start || true
+uvrun turingdb --query-file $QUERY_FILE_PATH
+bench turingdb stop
 
 # Neo4j benchmark
-uv run python manage_servers.py neo4j start
-uvrun neo4j --query-file "$QUERIES_DIR/$DATASET/labelsets.cypher"
-uv run python manage_servers.py neo4j stop
+bench neo4j start
+uvrun neo4j --query-file $QUERY_FILE_PATH
+bench neo4j stop
 
 # Memgraph benchmark
-uv run python manage_servers.py memgraph start
-uvrun memgraph --query-file "$QUERIES_DIR/$DATASET/labelsets.cypher" --database=memgraph
-uv run python manage_servers.py memgraph stop
+bench memgraph start
+uvrun memgraph --query-file $QUERY_FILE_PATH --database=memgraph --url=bolt://localhost:7688
+bench memgraph stop
