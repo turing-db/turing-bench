@@ -13,7 +13,7 @@ edgeCount=$(echo "$neooutput" | tail -n 1)
 bench neo4j stop 2>&1 > /dev/null
 
 while true; do
-    memoutput=$(echo 'MATCH (n) RETURN count(n); MATCH ()-[r]->() RETURN count(r);' | mgconsole --port 7687)
+    memoutput=$(echo 'MATCH (n) RETURN count(n); MATCH ()-[r]->() RETURN count(r);' | mgconsole --port 7688)
     curNodeCount=$(echo "$memoutput" | head -n 4 | tail -n 1 | cut -d ' ' -f 2)
     curEdgeCount=$(echo "$memoutput" | tail -n 2 | head -n 1 | cut -d ' ' -f 2)
     nodeCountPercent=$((curNodeCount * 100 / nodeCount))
