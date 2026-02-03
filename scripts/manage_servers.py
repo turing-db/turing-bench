@@ -190,7 +190,7 @@ class ServerManager:
                 return False
             
             try:
-                res = subprocess.run(f"echo 'RETURN 1;' | mgconsole --port 7687", shell=True, capture_output=True)
+                res = subprocess.run(f"echo 'RETURN 1;' | mgconsole --port 7688", shell=True, capture_output=True)
                 if res.returncode == 0:
                     return True
 
@@ -288,7 +288,7 @@ SERVERS = {
     ),
     "memgraph": ServerConfig(
         name="Memgraph",
-        start_command=f"{install_folder}/memgraph/usr/lib/memgraph/memgraph --log-file={install_folder}/memgraph/logs/memgraph.log --data-directory={install_folder}/memgraph/data/ --bolt-port=7687",
+        start_command=f"{install_folder}/memgraph/usr/lib/memgraph/memgraph --log-file={install_folder}/memgraph/logs/memgraph.log --data-directory={install_folder}/memgraph/data/ --bolt-port=7688",
         start_ready_pattern="You are running Memgraph v",
         stop_command="pkill -9 memgraph",
     ),
