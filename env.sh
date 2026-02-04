@@ -7,7 +7,6 @@ export NEO4J_HOME="$install_dir/neo4j-build"
 export NEO4J_IMPORT="$NEO4J_HOME/import"
 export NEO4J_DATA_DIR="$NEO4J_HOME/data"
 export MEMGRAPH_HOME="$install_dir/memgraph"
-export MEMGRAPH_DATA_DIR="$MEMGRAPH_HOME/data"
 export TURINGDB_DIR="$install_dir/turingdb"
 export TURINGDB_DATA_DIR="$TURINGDB_DIR/data"
 export TURINGDB_GRAPHS_DIR="$TURINGDB_DIR/graphs"
@@ -21,3 +20,9 @@ export PATH=$PATH:"$NEO4J_HOME/bin"
 alias memgraph="$install_dir/memgraph/usr/lib/memgraph/memgraph"
 alias mgconsole="$install_dir/memgraph/usr/bin/mgconsole"
 alias bench="uv run $SCRIPTS/manage_servers.py"
+
+function elapsed() {
+    local end=`date +%s`
+    runtime=$((end-start))
+    echo "$runtime sec"
+}
