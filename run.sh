@@ -18,25 +18,25 @@ fi
 cd $SCRIPTS
 alias uvrun="uv run --directory $GIT_ROOT python -m turingbench"
 
-bench turingdb stop > /dev/null || true
-bench neo4j stop > /dev/null || true
-bench memgraph stop > /dev/null || true
+echo "- Stopping all databases"
+bench turingdb stop || true > /dev/null
+bench neo4j stop || true > /dev/null
+bench memgraph stop || true > /dev/null
 
-$SCRIPTS/switch-dataset.sh $DATASET turingdb
-$SCRIPTS/switch-dataset.sh $DATASET neo4j
-$SCRIPTS/switch-dataset.sh $DATASET memgraph
+echo "- Switching to dataset $DATASET"
+$SCRIPTS/switch-neo4j-dataset.sh $DATASET
 
-# TuringDB benchmark
-bench turingdb start || true
-uvrun turingdb --query-file $QUERY_FILE_PATH
+echo "- Running benchmark for 'turingdb'"
+bench turingdb start -- -turing-dir $DUMPS/$DATASET.turingdb -load $DATASET
+uvrun turingdb --query-file $QUERY_FILE_PATH --database=$DATASET
 bench turingdb stop
 
-# Neo4j benchmark
+echo "- Running benchmark for 'memgraph'"
+bench memgraph start -- --data-directory=$DUMPS/$DATASET.memgraph
+uvrun memgraph --query-file $QUERY_FILE_PATH --database=memgraph --url=bolt://localhost:7688
+bench memgraph stop
+
+echo "- Running benchmark for 'neo4j'"
 bench neo4j start
 uvrun neo4j --query-file $QUERY_FILE_PATH
 bench neo4j stop
-
-# Memgraph benchmark
-bench memgraph start
-uvrun memgraph --query-file $QUERY_FILE_PATH --database=memgraph --url=bolt://localhost:7688
-bench memgraph stop

@@ -46,9 +46,7 @@ class AbstractDriver(ABC):
         
         for query in queries:
             print(f"Running benchmarks for: {query}")
-            for run in range(1, runs + 1):
-                print(f"\rRun {run}/{runs}", end='', flush=True)
-                
+            for _ in range(1, runs + 1):
                 query_timer = time.perf_counter_ns()
                 result = self.execute_query(query)
                 elapsed_us = (time.perf_counter_ns() - query_timer) // 1_000  # microseconds
@@ -57,7 +55,6 @@ class AbstractDriver(ABC):
                 
                 if query not in res.query_sizes:
                     res.query_sizes[query] = len(result)
-            print()
         
         return res
     
@@ -73,8 +70,8 @@ class AbstractDriver(ABC):
             "Min",
             "Max",
             "Median",
-            "Throughput (queries/second)",
-            "Result size"
+            "Query/sec",
+            "Row count"
         ]
         
         for query, times in results.query_times.items():
