@@ -13,14 +13,18 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 
+CLEARLINE = "\r\033[K"
+
 
 @dataclass
 class ServerConfig:
     """Configuration for a database server"""
+
     name: str
     start_command: str
     start_ready_pattern: str = ""
     start_timeout: int = 30
+    stop_timeout: int = 30
     stop_command: Optional[str] = None
     stop_input: Optional[str] = None
     log_file: Optional[str] = None
@@ -68,36 +72,45 @@ class ServerManager:
         result = subprocess.run(
             "ps aux | grep 'org.neo4j.server.CommunityEntryPoint' | grep -v grep",
             shell=True,
-            capture_output=True
+            capture_output=True,
         )
         return result.returncode == 0
 
-    def start(self, config: ServerConfig) -> bool:
+    def _is_memgraph_running(self) -> bool:
+        """Check if Neo4j is actually running"""
+        result = subprocess.run(
+            "echo 'RETURN 1;' | mgconsole --port 7688",
+            shell=True,
+            capture_output=True,
+        )
+        return result.returncode == 0
+
+    def start(self, config: ServerConfig, additional_args: str) -> bool:
         """Start a server and wait for it to be ready"""
-        
+
         # Special handling for Neo4j - check by process name instead of PID
         if config.name == "Neo4j":
             if self._is_neo4j_running():
-                print(f"⚠ {config.name} is already running")
+                print(f"{CLEARLINE}⚠ {config.name} is already running", end="")
                 return False
         else:
             # Original logic for TuringDB and Memgraph
             saved_pid = self._load_pid(config.name)
-            
+
             if saved_pid and self._is_process_alive(saved_pid):
-                print(f"⚠ {config.name} is already running")
+                print(f"{CLEARLINE}⚠ {config.name} is already running", end="")
                 return False
             elif saved_pid:
                 self._remove_pid_file(config.name)
-        
-        print(f"Starting {config.name}...")
-        
+
+        print(f"{CLEARLINE}○ Starting {config.name}...", end="")
+
         try:
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
-            
+
             self.process = subprocess.Popen(
-                config.start_command,
+                f"{config.start_command} {additional_args}",
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -110,36 +123,38 @@ class ServerManager:
             self._save_pid(config.name, self.process.pid)
 
             if config.name == "Memgraph":
-                if not self._wait_for_memgraph_ready():
+                if not self._wait_for_memgraph_ready(config):
                     return False
             elif config.name == "TuringDB":
-                if not self._wait_for_turingdb_ready():
+                if not self._wait_for_turingdb_ready(config):
                     return False
             elif config.name == "Neo4j":
-                if not self._wait_for_pattern(config.start_ready_pattern, config.start_timeout, config.log_file):
+                if not self._wait_for_pattern(
+                    config.start_ready_pattern, config.start_timeout, config.log_file
+                ):
                     return False
             else:
                 raise Exception(f"Unknown server type: {config.name}")
 
-            print(f"✓ {config.name} started")
+            print(f"{CLEARLINE}✓ {config.name} started", end="")
             return True
 
         except Exception as e:
-            print(f"✗ Failed to start {config.name}: {e}")
+            print(f"{CLEARLINE}✗ Failed to start {config.name}: {e}", end="")
             return False
 
-    def stop(self, config: ServerConfig) -> bool:
+    def stop(self, config: ServerConfig, additional_args: str) -> bool:
         """Stop a server gracefully"""
         saved_pid = self._load_pid(config.name)
-        
+
         if not saved_pid:
-            print(f"⚠ {config.name} is not running")
+            print(f"{CLEARLINE}⚠ {config.name} is not running", end="")
             return False
 
-        print(f"Stopping {config.name}...")
+        print(f"{CLEARLINE}  Stopping {config.name}...", end="")
 
         if config.stop_command:
-            subprocess.run(config.stop_command, shell=True, capture_output=True)
+            subprocess.run(f"{config.stop_command} {additional_args}", shell=True, capture_output=True)
         elif config.stop_input:
             if self.process and self.process.stdin:
                 try:
@@ -151,93 +166,100 @@ class ServerManager:
 
         # Verify server actually stopped (handles both blocking and non-blocking stop commands)
         if not self._verify_server_stopped(config):
-            print(f"✗ Failed to stop {config.name} within timeout")
+            print(f"{CLEARLINE}✗ Failed to stop {config.name} within timeout", end="")
             return False
-        
+
         self._remove_pid_file(config.name)
-        print(f"✓ {config.name} stopped")
+        print(f"{CLEARLINE}✓ {config.name} stopped", end="")
         return True
 
-    def _verify_server_stopped(self, config: ServerConfig, timeout: int = 60, check_interval: float = 0.5) -> bool:
+    def _verify_server_stopped(
+        self, config: ServerConfig, check_interval: float = 1.0
+    ) -> bool:
         """Verify that a server has actually stopped within timeout"""
         start_time = time.time()
-        
-        while time.time() - start_time < timeout:
+
+        while time.time() - start_time < config.stop_timeout:
             # Check if server is still running based on server type
             if config.name == "Neo4j":
                 is_running = self._is_neo4j_running()
+            elif config.name == "Memgraph":
+                is_running = self._is_memgraph_running()
             else:
                 # For TuringDB and Memgraph
                 saved_pid = self._load_pid(config.name)
                 is_running = saved_pid is not None and self._is_process_alive(saved_pid)
-            
+
             # If server is stopped, we're done
             if not is_running:
                 return True
-            
+
             # Still running, wait a bit and check again
             time.sleep(check_interval)
-        
+
         # Timeout reached and server is still running
         return False
 
-    def _wait_for_memgraph_ready(self) -> bool:
+    def _wait_for_memgraph_ready(self, config: ServerConfig) -> bool:
         """Wait for Memgraph to be ready"""
         start_time = time.time()
-        
-        while time.time() - start_time < 20:
+
+        while time.time() - start_time < config.stop_timeout:
             if self.process and self.process.poll() is not None:
                 return False
-            
+
             try:
-                res = subprocess.run(f"echo 'RETURN 1;' | mgconsole --port 7688", shell=True, capture_output=True)
+                res = subprocess.run(
+                    f"echo 'RETURN 1;' | mgconsole --port 7688",
+                    shell=True,
+                    capture_output=True,
+                )
                 if res.returncode == 0:
                     return True
 
-                time.sleep(0.5)
+                time.sleep(1.0)
             except Exception:
                 pass
 
         return False
 
-    def _wait_for_turingdb_ready(self) -> bool:
+    def _wait_for_turingdb_ready(self, config: ServerConfig) -> bool:
         """Wait for TuringDB to be ready"""
         start_time = time.time()
-        
-        while time.time() - start_time < 20:
-            if self.process and self.process.poll() is not None:
-                return False
-            
+
+        while time.time() - start_time < config.stop_timeout:
             try:
                 cmd = "uv run python3 -c 'import turingdb; c = turingdb.TuringDB(); c.warmup()'"
                 res = subprocess.run(cmd, shell=True, capture_output=True)
                 if res.returncode == 0:
                     return True
 
-                time.sleep(0.5)
+                time.sleep(1.0)
             except Exception:
                 pass
 
         return False
 
-    def _wait_for_pattern(self, pattern: str, timeout: int, log_file: Optional[str] = None) -> bool:
+    def _wait_for_pattern(
+        self, pattern: str, timeout: int, log_file: Optional[str] = None
+    ) -> bool:
         """Wait for a pattern in process output or log file"""
         start_time = time.time()
-        
+
         # If reading from log file
         if log_file:
             while time.time() - start_time < timeout:
                 try:
                     if os.path.exists(log_file):
-                        with open(log_file, 'r') as f:
+                        with open(log_file, "r") as f:
                             content = f.read()
                             if pattern in content:
                                 return True
                 except Exception:
                     pass
-                time.sleep(0.2)
+                time.sleep(1.0)
             return False
-        
+
         # Otherwise read from process stdout
         if not self.process:
             return False
@@ -267,41 +289,36 @@ def _get_repo_root() -> Path:
     # Script is at servers_python/manage_servers.py
     return Path(__file__).parent.parent
 
+
 repo_root = _get_repo_root()
 install_folder = (repo_root / "install").absolute()
 
-turingdbdir = os.environ.get("TURINGDB_DIR", None)
-if turingdbdir is None:
-    turingdbdir = install_folder / "turingdb"
+MEMGRAPH_BINARY = f"{install_folder}/memgraph/usr/lib/memgraph/memgraph"
+MEMGRAPH_LOG_FILE = f"{install_folder}/memgraph/log"
 
 SERVERS = {
     "turingdb": ServerConfig(
         name="TuringDB",
-        start_command=f"uv run turingdb -demon -turing-dir {turingdbdir}",
-        stop_command="pkill -9 turingdb",
+        start_command=f"turingdb -demon",
+        stop_command="pkill -15 turingdb",
     ),
     "neo4j": ServerConfig(
         name="Neo4j",
-        start_command=f"bash -c 'source {repo_root}/env.sh && neo4j start'", 
+        start_command=f"neo4j start",
         start_ready_pattern="Started neo4j",
-        stop_command=f"bash -c 'source {repo_root}/env.sh && neo4j stop'",
+        stop_command=f"neo4j stop",
     ),
     "memgraph": ServerConfig(
         name="Memgraph",
-        start_command=f"{install_folder}/memgraph/usr/lib/memgraph/memgraph --log-file={install_folder}/memgraph/logs/memgraph.log --data-directory={install_folder}/memgraph/data/ --bolt-port=7688",
-        start_ready_pattern="You are running Memgraph v",
-        stop_command="pkill -9 memgraph",
+        start_command=f"{MEMGRAPH_BINARY} "
+        + f"--log-file={MEMGRAPH_LOG_FILE} "
+        + f"--storage-mode=IN_MEMORY_ANALYTICAL "
+        + f"--bolt-port=7688",
+        stop_command="pkill -15 memgraph",
+        start_timeout=120,
+        stop_timeout=120,
     ),
 }
-
-
-def print_header(text: str) -> None:
-    """Print a formatted header"""
-    print()
-    print("╔════════════════════════════════╗")
-    print(f"║ {text:<30} ║")
-    print("╚════════════════════════════════╝")
-    print()
 
 
 def main():
@@ -314,46 +331,41 @@ Examples:
   %(prog)s turingdb start          # Start TuringDB
   %(prog)s neo4j stop              # Stop Neo4j
   %(prog)s all start               # Start all servers
-        """
+        """,
     )
-    
+
     parser.add_argument(
         "server",
         choices=["turingdb", "neo4j", "memgraph", "all"],
-        help="Server to manage (or 'all' for all servers)"
+        help="Server to manage (or 'all' for all servers)",
     )
-    
-    parser.add_argument(
-        "action",
-        choices=["start", "stop"],
-        help="Action to perform"
-    )
-    
+
+    parser.add_argument("action", choices=["start", "stop"], help="Action to perform")
+    parser.add_argument('additional', nargs=argparse.REMAINDER)
+
     args = parser.parse_args()
-    
+
     server_map = {
         "turingdb": [SERVERS["turingdb"]],
         "neo4j": [SERVERS["neo4j"]],
         "memgraph": [SERVERS["memgraph"]],
         "all": list(SERVERS.values()),
     }
-    
+
     servers_to_manage = server_map[args.server]
     manager = ServerManager()
     failed = False
-    
+
     for config in servers_to_manage:
-        print_header(config.name)
-        
         if args.action == "start":
-            if not manager.start(config):
+            if not manager.start(config, " ".join(args.additional)):
                 failed = True
         else:
-            if not manager.stop(config):
+            if not manager.stop(config, " ".join(args.additional)):
                 failed = True
-    
+    print()
+
     if failed:
-        print(f"✗ Server {args.server} failed to {args.action}")
         sys.exit(1)
 
     sys.exit(0)
