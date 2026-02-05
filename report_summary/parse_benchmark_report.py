@@ -5,8 +5,16 @@ import re
 import sys
 import subprocess
 import csv
+import logging
 from pathlib import Path
 from typing import Dict, List
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 class BenchmarkReportParser:
@@ -116,7 +124,7 @@ class BenchmarkReportParser:
             query_idx = header_parts.index("query")
             metric_idx = header_parts.index(metric.lower())
         except ValueError:
-            print(f"Warning: Could not find required columns in header")
+            logger.warning(f"Could not find required columns in header")
             return query_metric
         
         # Parse table rows
@@ -178,7 +186,7 @@ class BenchmarkReportParser:
     def save_csv(self, output_file: str) -> None:
         """Save summary as CSV"""
         if not self.summary:
-            print("No data to save")
+            logger.warning("No data to save")
             return
         
         fieldnames = ["Query"] + list(self.tools_data.keys())
@@ -187,12 +195,12 @@ class BenchmarkReportParser:
             writer.writeheader()
             writer.writerows(self.summary)
         
-        print(f"Summary saved to {output_file}")
+        logger.info(f"Summary saved to {output_file}")
     
     def save_text(self, output_file: str) -> None:
         """Save summary as formatted text table"""
         if not self.summary:
-            print("No data to save")
+            logger.warning("No data to save")
             return
         
         tools = list(self.tools_data.keys())
@@ -218,19 +226,19 @@ class BenchmarkReportParser:
             
             f.write(separator + "\n")
         
-        print(f"Summary saved to {output_file}")
+        logger.info(f"Summary saved to {output_file}")
     
     def save_markdown(self, output_file: str) -> None:
         """Save summary as markdown table"""
         if not self.summary:
-            print("No data to save")
+            logger.warning("No data to save")
             return
         
         markdown_table = self._generate_markdown_table()
         with open(output_file, 'w') as f:
             f.write(markdown_table)
         
-        print(f"Summary saved to {output_file}")
+        logger.info(f"Summary saved to {output_file}")
     
     def _generate_markdown_table(self) -> str:
         """Generate markdown table as string"""
@@ -238,23 +246,16 @@ class BenchmarkReportParser:
             return ""
         
         tools = list(self.tools_data.keys())
-        
-        # Calculate actual column widths based on content
-        query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=5))
-        tool_widths = {}
-        for tool in tools:
-            tool_widths[tool] = max(len(tool), max((len(row[tool]) for row in self.summary), default=5))
-        
         lines = []
         
         # Header and separator
         lines.append("| Query | " + " | ".join(tools) + " |")
-        lines.append("|" + "|".join(["-" * (query_width + 2)] + ["-" * (tool_widths[t] + 2) for t in tools]) + "|")
+        lines.append("|" + "|".join(["-" * 80] + ["-" * 20 for _ in tools]) + "|")
         
         # Data rows
         for row in self.summary:
-            query = row["Query"].ljust(query_width)
-            means = " | ".join(row[tool].ljust(tool_widths[tool]) for tool in tools)
+            query = row["Query"]
+            means = " | ".join(row[tool] for tool in tools)
             lines.append(f"| {query} | {means} |")
         
         return "\n".join(lines)
@@ -265,7 +266,7 @@ class BenchmarkReportParser:
         readme_path = repo_root / "README.md"
         
         if not readme_path.exists():
-            print(f"Error: {readme_path} not found")
+            logger.error(f"{readme_path} not found")
             return
         
         content = readme_path.read_text()
@@ -296,12 +297,12 @@ class BenchmarkReportParser:
                 content += dataset_subsection
         
         readme_path.write_text(content)
-        print(f"README.md updated with benchmark results for {dataset_name}")
+        logger.info(f"README.md updated with benchmark results for {dataset_name}")
     
     def print_summary(self) -> None:
         """Print summary table to stdout"""
         if not self.summary:
-            print("No data to print")
+            logger.warning("No data to print")
             return
         
         tools = list(self.tools_data.keys())
@@ -324,11 +325,11 @@ class BenchmarkReportParser:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python parse_benchmark_report.py <report_file> [--dataset <name>] [--print] [--csv] [--text] [--markdown] [--update-readme]")
-        print("\nExamples:")
-        print("  python parse_benchmark_report.py report.txt --print")
-        print("  python parse_benchmark_report.py report.txt --metric min --dataset reactome --csv")
-        print("  python parse_benchmark_report.py report.txt --dataset pokec_small --update-readme")
+        logger.error("Usage: python parse_benchmark_report.py <report_file> [--dataset <name>] [--print] [--csv] [--text] [--markdown] [--update-readme]")
+        logger.info("Examples:")
+        logger.info("  python parse_benchmark_report.py report.txt --print")
+        logger.info("  python parse_benchmark_report.py report.txt --metric min --dataset reactome --csv")
+        logger.info("  python parse_benchmark_report.py report.txt --dataset pokec_small --update-readme")
         sys.exit(1)
     
     report_file = sys.argv[1]
@@ -367,7 +368,7 @@ def main():
             parser.save_markdown(output_file)
         elif sys.argv[i] == "--update-readme":
             if not dataset_name:
-                print("Error: --dataset parameter is required for --update-readme")
+                logger.error("--dataset parameter is required for --update-readme")
                 sys.exit(1)
             parser.update_readme(dataset_name)
         
