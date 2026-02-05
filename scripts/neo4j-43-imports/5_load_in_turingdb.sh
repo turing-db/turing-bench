@@ -16,7 +16,7 @@ SAVE_PATH="$DUMPS/$DATASET.turingdb"
 
 if [ -d "$SAVE_PATH" ]; then
     echo "- $DATASET dump already exists in $SAVE_PATH. Skipping..."
-    exit 1
+    exit 2
 fi
 
 echo "- Loading $DATASET jsonl into turingdb..."
@@ -24,6 +24,6 @@ mkdir -p $SAVE_PATH/data
 cp "$JSON_FILE" "$SAVE_PATH/data/output.json"
 
 start=$(date +%s)
-echo "LOAD JSONL 'output.json' AS $DATASET;" | turingdb -turing-dir $SAVE_PATH
+echo "LOAD JSONL 'output.json' AS $DATASET;" | uv run turingdb -turing-dir $SAVE_PATH
 echo "- Loading $DATASET jsonl into turingdb took $(elapsed $start)"
 
