@@ -8,7 +8,6 @@ source "$REPO_ROOT/env.sh"
 DUMP_FILE="reactome.dump"
 DUMP_PATH="$NEO4J_IMPORT/$DUMP_FILE"
 DUMP_URL="https://reactome.org/download/current/reactome.graphdb.dump"
-# DUMP_URL="https://github.com/neo4j-graph-examples/recommendations/raw/refs/heads/main/data/recommendations-43.dump"
 
 if [ -f "$DUMP_PATH" ]; then
     rm "$DUMP_PATH"

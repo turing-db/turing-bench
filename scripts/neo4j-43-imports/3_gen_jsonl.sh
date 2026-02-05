@@ -5,7 +5,14 @@ shopt -s expand_aliases
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 source "$REPO_ROOT/env.sh"
-FILE_PATH="$DUMPS/reactome.jsonl"
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <dataset>"
+    exit 1
+fi
+
+DATASET=$1
+FILE_PATH="$DUMPS/$DATASET.jsonl"
 
 bench neo4j start || true
 
