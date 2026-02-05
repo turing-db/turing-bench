@@ -4,7 +4,7 @@ import sys
 import argparse
 from typing import List, Dict, Any
 
-from abstract_driver import AbstractDriver
+from .abstract_driver import AbstractDriver
 
 from neo4j import GraphDatabase
 
@@ -46,10 +46,7 @@ class Neo4jDriver(AbstractDriver):
                            help='Database name (default: neo4j)')
 
 
-def main() -> None:
-    parser = Neo4jDriver.create_argument_parser(description='Neo4j Benchmarking Tool')
-    args = parser.parse_args();
-    
+def main(args: argparse.Namespace) -> None:
     driver = Neo4jDriver()
     
     try:
@@ -72,4 +69,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = Neo4jDriver.create_argument_parser(description='Neo4j Benchmarking Tool')
+    args = parser.parse_args();
+    
+    main(args)

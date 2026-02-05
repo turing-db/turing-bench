@@ -113,7 +113,7 @@ class AbstractDriver(ABC):
     @staticmethod
     def add_common_arguments(parser: argparse.ArgumentParser) -> None:
         """Add common arguments for all database benchmarks"""
-        parser.add_argument('--query', '-q', required=True,
+        parser.add_argument('--query-file', '-q', required=True, dest="query",
                            help="The query file to run against the database")
         parser.add_argument('--debug', '-d', action='store_true',
                            help="Enable debug mode: logs errors of queries")

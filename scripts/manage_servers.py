@@ -109,13 +109,17 @@ class ServerManager:
 
             self._save_pid(config.name, self.process.pid)
 
-            if config.start_ready_pattern:
-                if config.name == "Memgraph":
-                    if not self._wait_for_memgraph_ready():
-                        return False
-                else:
-                    if not self._wait_for_pattern(config.start_ready_pattern, config.start_timeout, config.log_file):
-                        return False
+            if config.name == "Memgraph":
+                if not self._wait_for_memgraph_ready():
+                    return False
+            elif config.name == "TuringDB":
+                if not self._wait_for_turingdb_ready():
+                    return False
+            elif config.name == "Neo4j":
+                if not self._wait_for_pattern(config.start_ready_pattern, config.start_timeout, config.log_file):
+                    return False
+            else:
+                raise Exception(f"Unknown server type: {config.name}")
 
             print(f"✓ {config.name} started")
             return True
@@ -196,6 +200,26 @@ class ServerManager:
 
         return False
 
+    def _wait_for_turingdb_ready(self) -> bool:
+        """Wait for TuringDB to be ready"""
+        start_time = time.time()
+        
+        while time.time() - start_time < 20:
+            if self.process and self.process.poll() is not None:
+                return False
+            
+            try:
+                cmd = "uv run python3 -c 'import turingdb; c = turingdb.TuringDB(); c.warmup()'"
+                res = subprocess.run(cmd, shell=True, capture_output=True)
+                if res.returncode == 0:
+                    return True
+
+                time.sleep(0.5)
+            except Exception:
+                pass
+
+        return False
+
     def _wait_for_pattern(self, pattern: str, timeout: int, log_file: Optional[str] = None) -> bool:
         """Wait for a pattern in process output or log file"""
         start_time = time.time()
@@ -246,13 +270,14 @@ def _get_repo_root() -> Path:
 repo_root = _get_repo_root()
 install_folder = (repo_root / "install").absolute()
 
+turingdbdir = os.environ.get("TURINGDB_DIR", None)
+if turingdbdir is None:
+    turingdbdir = install_folder / "turingdb"
 
 SERVERS = {
     "turingdb": ServerConfig(
         name="TuringDB",
-        start_command="uv run turingdb",
-        start_ready_pattern="Server listening",
-        log_file="/tmp/turingdb.log",
+        start_command=f"uv run turingdb -demon -turing-dir {turingdbdir}",
         stop_command="pkill -9 turingdb",
     ),
     "neo4j": ServerConfig(
