@@ -38,5 +38,6 @@ echo "Reactome successfully loaded in Neo4j."
 neo4j-admin database migrate neo4j --verbose --force-btree-indexes-to-range
 echo "Migration from Neo4j v4 to v5 done."
 
+mkdir -p $DUMPS || true
 cp -r "$NEO4J_DATA_DIR" "$SAVE_PATH"
 echo "Reactome dump successfully stored in $SAVE_PATH directory."
