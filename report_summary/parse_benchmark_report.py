@@ -18,11 +18,12 @@ class BenchmarkReportParser:
         'memgraph': 'Memgraph'
     }
     
-    def __init__(self, report_file: str):
+    def __init__(self, report_file: str, metric: str = "mean"):
         self.report_file = Path(report_file)
         self.content = self.report_file.read_text()
         self.tools_data: Dict[str, Dict[str, str]] = {}
         self.summary: List[Dict[str, str]] = []
+        self.metric = metric.lower()
     
     def _get_repo_root(self) -> Path:
         """Get the git repository root"""
@@ -135,7 +136,7 @@ class BenchmarkReportParser:
         """Parse the entire report and return data for all tools"""
         tables = self._extract_tables()
         for tool, table_info in tables.items():
-            self.tools_data[tool] = self._parse_table(table_info)
+            self.tools_data[tool] = self._parse_table(table_info, self.metric)
         return self.tools_data
     
     def get_all_queries(self) -> List[str]:
@@ -314,24 +315,28 @@ def main():
         print("Usage: python parse_benchmark_report.py <report_file> [--dataset <name>] [--print] [--csv] [--text] [--markdown] [--update-readme]")
         print("\nExamples:")
         print("  python parse_benchmark_report.py report.txt --print")
-        print("  python parse_benchmark_report.py report.txt --dataset reactome --csv --markdown")
+        print("  python parse_benchmark_report.py report.txt --metric min --dataset reactome --csv")
         print("  python parse_benchmark_report.py report.txt --dataset pokec_small --update-readme")
         sys.exit(1)
     
     report_file = sys.argv[1]
     dataset_name = None
+    metric = "mean"
     
-    # Parse --dataset argument
+    # Parse --metric and --dataset arguments
     i = 2
     while i < len(sys.argv):
-        if sys.argv[i] == "--dataset" and i + 1 < len(sys.argv):
+        if sys.argv[i] == "--metric" and i + 1 < len(sys.argv):
+            metric = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i] == "--dataset" and i + 1 < len(sys.argv):
             dataset_name = sys.argv[i + 1]
             i += 2
         else:
             break
     
     # Parse report
-    parser = BenchmarkReportParser(report_file)
+    parser = BenchmarkReportParser(report_file, metric=metric)
     parser.parse()
     parser.create_summary()
     
