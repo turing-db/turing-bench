@@ -16,6 +16,7 @@ class BenchmarkReportParser:
         self.report_file = Path(report_file)
         self.content = self.report_file.read_text()
         self.tools_data: Dict[str, Dict[str, str]] = {}
+        self.summary = {}
     
     def _get_repo_root(self) -> Path:
         """Get the git repository root"""
@@ -36,63 +37,175 @@ class BenchmarkReportParser:
                 current = current.parent
             raise RuntimeError("Could not find git repository root")
     
-    def _extract_tables(self) -> Dict[str, str]:
+    # def _extract_tables(self) -> Dict[str, str]:
+    #     """Extract table content for each tool"""
+    #     tools = {}
+        
+    #     # Look for tool headers and their sections
+    #     # Pattern 1: Unicode box drawing characters
+    #     tool_pattern1 = r'║ (TuringDB|Neo4j|Memgraph)\s+║.*?\n.*?\n.*?(?=║ |Running benchmark|Stopping|$)'
+        
+    #     # Pattern 2: Dashes and pipes (newer format without tool headers, detect by "Running benchmark for")
+    #     # In this case we need to find tables between "Running benchmark for 'toolname'" and next benchmark
+    #     lines = self.content.split('\n')
+        
+    #     current_tool = None
+    #     table_lines = []
+        
+    #     for i, line in enumerate(lines):
+    #         # Detect tool from "Running benchmark for 'toolname'"
+    #         tool_match = re.search(r"Running benchmark for '(turingdb|memgraph|neo4j)'", line)
+    #         if tool_match:
+    #             # Save previous tool's table if exists
+    #             if current_tool and table_lines:
+    #                 tools[current_tool.capitalize()] = {
+    #                     "header": header_match,
+    #                     "table": '\n'.join(table_lines)
+    #                 }
+    #                 # tools[current_tool.capitalize()] = '\n'.join(table_lines)
+    #                 table_lines = []
+    #             current_tool = tool_match.group(1)
+
+    #         # Collect table header
+    #         if "Query" in line and "Mean" in line and "|" in line:
+    #             # print(f"Found header: {line}")
+    #             header_match = line
+            
+    #         # Collect table rows (lines with pipes and match/create queries)
+    #         if current_tool and ('| match' in line.lower() or '| create' in line.lower()):
+    #             table_lines.append(line)
+        
+    #     # Don't forget the last tool
+    #     if current_tool and table_lines:
+    #         tools[current_tool.capitalize()] = {
+    #             "header": header_match,
+    #             "table": '\n'.join(table_lines)
+    #         } # '\n'.join(table_lines)
+        
+    #     # print(f"tools: {tools}")
+
+    #     return tools
+
+    def _extract_tables(self) -> Dict[str, Dict[str, str]]:
         """Extract table content for each tool"""
         tools = {}
         
-        # Look for tool headers followed by tables
-        # Pattern: header with tool name, followed by table content, before next header or end
-        tool_pattern = r'║ (TuringDB|Neo4j|Memgraph)\s+║.*?\n.*?\n.*?(?=╔|$)'
+        # Mapping to standardized tool names
+        tool_name_map = {
+            'turingdb': 'TuringDB',
+            'neo4j': 'Neo4j',
+            'memgraph': 'Memgraph'
+        }
         
-        matches = re.finditer(tool_pattern, self.content, re.DOTALL)
+        lines = self.content.split('\n')
+        current_tool = None
+        table_lines = []
+        header_match = None
+        in_table = False
         
-        for match in matches:
-            tool_name = match.group(1)
-            section = match.group(0)
+        for i, line in enumerate(lines):
+            # Format 1: Detect tool from unicode box drawing header (║ TuringDB ║)
+            header_box_match = re.search(r'║ (turingdb|neo4j|memgraph)\s+║', line, re.IGNORECASE)
+            if header_box_match:
+                # Save previous tool's table if exists
+                if current_tool and table_lines and header_match:
+                    tools[current_tool] = {
+                        "header": header_match,
+                        "table": '\n'.join(table_lines)
+                    }
+                    table_lines = []
+                current_tool = tool_name_map[header_box_match.group(1).lower()]
+                header_match = None
+                in_table = False
             
-            # Extract table content (lines with pipes and query data)
-            table_lines = []
-            for line in section.split('\n'):
-                if '| MATCH' in line or '| CREATE' in line:
-                    table_lines.append(line)
+            # Format 2: Detect tool from "Running benchmark for 'toolname'"
+            tool_match = re.search(r"Running benchmark for ['\"]?(turingdb|neo4j|memgraph)['\"]?", line, re.IGNORECASE)
+            if tool_match:
+                # Save previous tool's table if exists
+                if current_tool and table_lines and header_match:
+                    tools[current_tool] = {
+                        "header": header_match,
+                        "table": '\n'.join(table_lines)
+                    }
+                    table_lines = []
+                current_tool = tool_name_map[tool_match.group(1).lower()]
+                header_match = None
+                in_table = False
             
-            if table_lines:
-                tools[tool_name] = '\n'.join(table_lines)
+            # Detect table header (contains Query and Mean columns)
+            if "Query" in line and "Mean" in line and "|" in line:
+                header_match = line
+                in_table = True
+                continue
+            
+            # Collect table rows (lines with pipes and queries)
+            if in_table and current_tool and ('| match' in line.lower() or '| create' in line.lower()):
+                table_lines.append(line)
+        
+        # Don't forget the last tool
+        if current_tool and table_lines and header_match:
+            tools[current_tool] = {
+                "header": header_match,
+                "table": '\n'.join(table_lines)
+            }
         
         return tools
     
-    def _parse_table(self, table_content: str) -> Dict[str, str]:
+    def _parse_table(self, table_info: str, metric: str = "mean") -> Dict[str, str]:
         """Parse table content and extract query -> mean runtime mapping"""
-        query_means = {}
+        query_metric = {}
+
+        # print(100 * "-")
+
+        tool_header = [elt.strip().lower() for elt in table_info["header"].split("|")]
+        # print(f"header: {tool_header}")
+        query_idx = tool_header.index("query")
+        metric_idx = tool_header.index(metric.lower())
+        # print(f"query_idx: {query_idx}\nmetric_idx: {metric_idx}")
+
+        table_content = table_info["table"]
         
         for line in table_content.split('\n'):
+            # print()
+            # print(line)
             if not line.strip() or '|' not in line:
                 continue
             
             # Split by pipe and extract fields
             parts = [p.strip() for p in line.split('|')]
+            # print(f"parts: {parts}\n")
             
             if len(parts) < 3:
                 continue
             
-            # Query is typically in the first meaningful column
-            # Mean runtime is in the second column (index 1 after splitting)
-            query = parts[1]
-            mean_value = parts[2] if len(parts) > 2 else None
+            # Get query and metric value
+            query = parts[query_idx]
+            metric_value = parts[metric_idx] # parts[2] if len(parts) > 2 else None
+            # print(f"query: {query}")
+            # print(f"metric_value: {metric_value}")
             
             # Validate that we have a query and mean value
-            if query and mean_value and (query.startswith('MATCH') or query.startswith('CREATE')):
-                query_means[query] = mean_value
+            if query and metric_value and (query.startswith(('match', 'MATCH')) or query.startswith(('create', 'CREATE'))):
+                query_metric[query] = metric_value
+
+            # print(f"query_metric: {query_metric}")
+            # print()
+            # print(100 * "-")
         
-        return query_means
+        return query_metric
     
     def parse(self) -> Dict[str, Dict[str, str]]:
         """Parse the entire report and return data for all tools"""
         tables = self._extract_tables()
+        print(100 * '-')
+        print(f"tables: {tables}")
+        print(100 * '-')
+        print(f"tables: \n{type(tables)}\n{len(tables)}\n{tables.keys()}\n{tables['TuringDB'].keys()}")
         
-        for tool, table_content in tables.items():
-            self.tools_data[tool] = self._parse_table(table_content)
+        for tool, table_info in tables.items():
+            self.tools_data[tool] = self._parse_table(table_info)
         
+        # print(f"self.tools_data: {self.tools_data}")
         return self.tools_data
     
     def get_all_queries(self) -> List[str]:
@@ -102,14 +215,14 @@ class BenchmarkReportParser:
         
         # Maintain order by iterating through content
         for line in self.content.split('\n'):
-            if '| MATCH' in line or '| CREATE' in line:
-                # Extract query
+            if '| match' in line.lower() or '| create' in line.lower():
+                # Extract query - it's the first part before the Mean value
                 parts = [p.strip() for p in line.split('|')]
                 if len(parts) > 1:
                     query = parts[1]
-                    if query and query not in seen:
+                    if query and query.lower() not in seen:
                         queries.append(query)
-                        seen.add(query)
+                        seen.add(query.lower())
         
         return queries
     
@@ -117,6 +230,9 @@ class BenchmarkReportParser:
         """Create summary table with queries and mean runtimes per tool"""
         queries = self.get_all_queries()
         tools = list(self.tools_data.keys())
+
+        # print(f"queries: {queries}")
+        # print(f"tools: {tools}")
         
         summary = []
         for query in queries:
@@ -127,14 +243,19 @@ class BenchmarkReportParser:
                 row[tool] = mean_value
             
             summary.append(row)
+
+        if not summary:
+            raise ValueError("Summary table creation failed.")
         
-        return summary
+        self.summary = summary
+        # return summary
+    
     
     def save_csv(self, output_file: str):
         """Save summary as CSV"""
-        summary = self.create_summary()
+        # summary = self.create_summary()
         
-        if not summary:
+        if not self.summary:
             print("No data to save")
             return
         
@@ -143,24 +264,24 @@ class BenchmarkReportParser:
         with open(output_file, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(summary)
+            writer.writerows(self.summary)
         
         print(f"Summary saved to {output_file}")
     
     def save_text(self, output_file: str):
         """Save summary as formatted text table"""
-        summary = self.create_summary()
+        # summary = self.create_summary()
         
-        if not summary:
+        if not self.summary:
             print("No data to save")
             return
         
         tools = list(self.tools_data.keys())
         
         # Calculate column widths
-        query_width = max(len("Query"), max((len(row["Query"]) for row in summary), default=0))
+        query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=0))
         col_width = max(len(tool) for tool in tools)
-        col_width = max(col_width, max((len(row[tool]) for row in summary for tool in tools), default=0))
+        col_width = max(col_width, max((len(row[tool]) for row in self.summary for tool in tools), default=0))
         
         # Write header
         header = "Query".ljust(query_width) + " | " + " | ".join(tool.ljust(col_width) for tool in tools)
@@ -171,7 +292,7 @@ class BenchmarkReportParser:
             f.write(header + "\n")
             f.write(separator + "\n")
             
-            for row in summary:
+            for row in self.summary:
                 query = row["Query"].ljust(query_width)
                 means = " | ".join(row[tool].ljust(col_width) for tool in tools)
                 f.write(query + " | " + means + "\n")
@@ -182,9 +303,9 @@ class BenchmarkReportParser:
     
     def save_markdown(self, output_file: str):
         """Save summary as markdown table"""
-        summary = self.create_summary()
+        # summary = self.create_summary()
         
-        if not summary:
+        if not self.summary:
             print("No data to save")
             return
         
@@ -198,7 +319,7 @@ class BenchmarkReportParser:
             f.write("|" + "|".join(["-" * 80] + ["-" * 20 for _ in tools]) + "|\n")
             
             # Write rows
-            for row in summary:
+            for row in self.summary:
                 query = row["Query"]
                 means = " | ".join(row[tool] for tool in tools)
                 f.write(f"| {query} | {means} |\n")
@@ -207,9 +328,9 @@ class BenchmarkReportParser:
     
     def _generate_markdown_table(self) -> str:
         """Generate markdown table as string"""
-        summary = self.create_summary()
+        # summary = self.create_summary()
         
-        if not summary:
+        if not self.summary:
             return ""
         
         tools = list(self.tools_data.keys())
@@ -222,7 +343,7 @@ class BenchmarkReportParser:
         lines.append("|" + "|".join(["-" * 80] + ["-" * 20 for _ in tools]) + "|")
         
         # Write rows
-        for row in summary:
+        for row in self.summary:
             query = row["Query"]
             means = " | ".join(row[tool] for tool in tools)
             lines.append(f"| {query} | {means} |")
@@ -274,25 +395,24 @@ class BenchmarkReportParser:
     
     def print_summary(self):
         """Print summary table to stdout"""
-        summary = self.create_summary()
-        
-        if not summary:
-            print("No data to print")
-            return
+
+        # if not summary:
+        #     print("No data to print")
+        #     raise ValueError("Summary table is empty")
         
         tools = list(self.tools_data.keys())
         
         # Calculate column widths
-        query_width = max(len("Query"), max((len(row["Query"]) for row in summary), default=0))
+        query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=0))
         col_width = max(len(tool) for tool in tools)
-        col_width = max(col_width, max((len(row[tool]) for row in summary for tool in tools), default=0))
+        col_width = max(col_width, max((len(row[tool]) for row in self.summary for tool in tools), default=0))
         
         # Print header
         print("Query".ljust(query_width) + " | " + " | ".join(tool.ljust(col_width) for tool in tools))
         print("-" * (query_width + 3 + (col_width + 3) * len(tools)))
         
         # Print rows
-        for row in summary:
+        for row in self.summary:
             query = row["Query"].ljust(query_width)
             means = " | ".join(row[tool].ljust(col_width) for tool in tools)
             print(query + " | " + means)
@@ -305,7 +425,6 @@ def main():
         print("  python parse_benchmark_report.py report.txt")
         print("  python parse_benchmark_report.py report.txt --dataset reactome --csv --markdown")
         print("  python parse_benchmark_report.py report.txt --dataset pokec_small --update-readme")
-        print("  python parse_benchmark_report.py poledb_benchmark_report.txt --dataset poledb --csv --text --markdown --update-readme")
         sys.exit(1)
     
     report_file = sys.argv[1]
@@ -321,14 +440,22 @@ def main():
             break
     
     parser = BenchmarkReportParser(report_file)
+    # print(f"parser: {parser}")
     parser.parse()
     
+    # Create summary data
+    parser.create_summary()
+    # print(f"summary: {self.summary}")
+    
     # Print to stdout by default
-    parser.print_summary()
+    # parser.print_summary()
     
     # Handle optional output formats
     while i < len(sys.argv):
-        if sys.argv[i] == "--csv":
+        if sys.argv[i] == "--print":
+            parser.print_summary()
+            i += 1
+        elif sys.argv[i] == "--csv":
             if dataset_name:
                 output_file = f"report_{dataset_name}.csv"
             else:
