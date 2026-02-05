@@ -299,7 +299,7 @@ MEMGRAPH_LOG_FILE = f"{install_folder}/memgraph/log"
 SERVERS = {
     "turingdb": ServerConfig(
         name="TuringDB",
-        start_command=f"turingdb -demon",
+        start_command=f"uv run turingdb -demon",
         stop_command="pkill -15 turingdb",
     ),
     "neo4j": ServerConfig(

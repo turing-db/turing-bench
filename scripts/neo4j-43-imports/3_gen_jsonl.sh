@@ -20,7 +20,7 @@ start=`date +%s`
 
 if [ -f $FILE_PATH ]; then
     echo "- $FILE_PATH already exists. Skipping..."
-    exit 1
+    exit 2
 fi
 
 # Export graph as jsonl file
