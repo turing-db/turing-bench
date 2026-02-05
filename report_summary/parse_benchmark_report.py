@@ -26,7 +26,7 @@ class BenchmarkReportParser:
         'memgraph': 'Memgraph'
     }
     
-    def __init__(self, report_file: str, metric: str = "mean"):
+    def __init__(self, report_file: str, metric: str = "mean", output_dir: str = None):
         self.report_file = Path(report_file)
         
         # Validate that report file exists
@@ -37,6 +37,7 @@ class BenchmarkReportParser:
         self.tools_data: Dict[str, Dict[str, str]] = {}
         self.summary: List[Dict[str, str]] = []
         self.metric = metric.lower()
+        self.output_dir = Path(output_dir) if output_dir else None
     
     def _get_repo_root(self) -> Path:
         """Get the git repository root"""
@@ -56,6 +57,22 @@ class BenchmarkReportParser:
                     return current
                 current = current.parent
             raise RuntimeError("Could not find git repository root")
+    
+    def _ensure_output_dir(self, dataset_name: str = None) -> Path:
+        """Get and create output directory if needed"""
+        if self.output_dir:
+            output_path = self.output_dir
+        else:
+            # Default: <git_repo_root>/reports/<dataset>
+            repo_root = self._get_repo_root()
+            if dataset_name:
+                output_path = repo_root / "reports" / dataset_name
+            else:
+                output_path = repo_root / "reports"
+        
+        output_path.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Output directory: {output_path}")
+        return output_path
     
     def _extract_tables(self) -> Dict[str, Dict[str, str]]:
         """Extract table content for each tool from both format types"""
@@ -183,25 +200,39 @@ class BenchmarkReportParser:
         
         return self.summary
     
-    def save_csv(self, output_file: str) -> None:
+    def save_csv(self, output_file: str = None, dataset_name: str = None) -> None:
         """Save summary as CSV"""
         if not self.summary:
             logger.warning("No data to save")
             return
         
+        output_dir = self._ensure_output_dir(dataset_name)
+        
+        if output_file is None:
+            output_file = f"report_{dataset_name}.csv" if dataset_name else "summary.csv"
+        
+        output_path = output_dir / output_file
+        
         fieldnames = ["Query"] + list(self.tools_data.keys())
-        with open(output_file, 'w', newline='') as f:
+        with open(output_path, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(self.summary)
         
-        logger.info(f"Summary saved to {output_file}")
+        logger.info(f"Summary saved to {output_path}")
     
-    def save_text(self, output_file: str) -> None:
+    def save_text(self, output_file: str = None, dataset_name: str = None) -> None:
         """Save summary as formatted text table"""
         if not self.summary:
             logger.warning("No data to save")
             return
+        
+        output_dir = self._ensure_output_dir(dataset_name)
+        
+        if output_file is None:
+            output_file = f"report_{dataset_name}.txt" if dataset_name else "summary.txt"
+        
+        output_path = output_dir / output_file
         
         tools = list(self.tools_data.keys())
         
@@ -214,7 +245,7 @@ class BenchmarkReportParser:
         header = "Query".ljust(query_width) + " | " + " | ".join(tool.ljust(col_width) for tool in tools)
         separator = "-" * len(header)
         
-        with open(output_file, 'w') as f:
+        with open(output_path, 'w') as f:
             f.write(separator + "\n")
             f.write(header + "\n")
             f.write(separator + "\n")
@@ -226,19 +257,26 @@ class BenchmarkReportParser:
             
             f.write(separator + "\n")
         
-        logger.info(f"Summary saved to {output_file}")
+        logger.info(f"Summary saved to {output_path}")
     
-    def save_markdown(self, output_file: str) -> None:
+    def save_markdown(self, output_file: str = None, dataset_name: str = None) -> None:
         """Save summary as markdown table"""
         if not self.summary:
             logger.warning("No data to save")
             return
         
+        output_dir = self._ensure_output_dir(dataset_name)
+        
+        if output_file is None:
+            output_file = f"report_{dataset_name}.md" if dataset_name else "summary.md"
+        
+        output_path = output_dir / output_file
+        
         markdown_table = self._generate_markdown_table()
-        with open(output_file, 'w') as f:
+        with open(output_path, 'w') as f:
             f.write(markdown_table)
         
-        logger.info(f"Summary saved to {output_file}")
+        logger.info(f"Summary saved to {output_path}")
     
     def _generate_markdown_table(self) -> str:
         """Generate markdown table as string"""
@@ -246,16 +284,23 @@ class BenchmarkReportParser:
             return ""
         
         tools = list(self.tools_data.keys())
+        
+        # Calculate actual column widths based on content
+        query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=5))
+        tool_widths = {}
+        for tool in tools:
+            tool_widths[tool] = max(len(tool), max((len(row[tool]) for row in self.summary), default=5))
+        
         lines = []
         
         # Header and separator
         lines.append("| Query | " + " | ".join(tools) + " |")
-        lines.append("|" + "|".join(["-" * 80] + ["-" * 20 for _ in tools]) + "|")
+        lines.append("|" + "|".join(["-" * (query_width + 2)] + ["-" * (tool_widths[t] + 2) for t in tools]) + "|")
         
         # Data rows
         for row in self.summary:
-            query = row["Query"]
-            means = " | ".join(row[tool] for tool in tools)
+            query = row["Query"].ljust(query_width)
+            means = " | ".join(row[tool].ljust(tool_widths[tool]) for tool in tools)
             lines.append(f"| {query} | {means} |")
         
         return "\n".join(lines)
@@ -325,18 +370,20 @@ class BenchmarkReportParser:
 
 def main():
     if len(sys.argv) < 2:
-        logger.error("Usage: python parse_benchmark_report.py <report_file> [--dataset <name>] [--print] [--csv] [--text] [--markdown] [--update-readme]")
+        logger.error("Usage: python parse_benchmark_report.py <report_file> [--dataset <n>] [--output-dir <path>] [--print] [--csv] [--text] [--markdown] [--update-readme]")
         logger.info("Examples:")
         logger.info("  python parse_benchmark_report.py report.txt --print")
         logger.info("  python parse_benchmark_report.py report.txt --metric min --dataset reactome --csv")
         logger.info("  python parse_benchmark_report.py report.txt --dataset pokec_small --update-readme")
+        logger.info("  python parse_benchmark_report.py report.txt --dataset reactome --output-dir /custom/path --csv")
         sys.exit(1)
     
     report_file = sys.argv[1]
     dataset_name = None
     metric = "mean"
+    output_dir = None
     
-    # Parse --metric and --dataset arguments
+    # Parse --metric, --dataset, and --output-dir arguments
     i = 2
     while i < len(sys.argv):
         if sys.argv[i] == "--metric" and i + 1 < len(sys.argv):
@@ -345,11 +392,14 @@ def main():
         elif sys.argv[i] == "--dataset" and i + 1 < len(sys.argv):
             dataset_name = sys.argv[i + 1]
             i += 2
+        elif sys.argv[i] == "--output-dir" and i + 1 < len(sys.argv):
+            output_dir = sys.argv[i + 1]
+            i += 2
         else:
             break
     
     # Parse report
-    parser = BenchmarkReportParser(report_file, metric=metric)
+    parser = BenchmarkReportParser(report_file, metric=metric, output_dir=output_dir)
     parser.parse()
     parser.create_summary()
     
@@ -358,14 +408,11 @@ def main():
         if sys.argv[i] == "--print":
             parser.print_summary()
         elif sys.argv[i] == "--csv":
-            output_file = f"report_{dataset_name}.csv" if dataset_name else "summary.csv"
-            parser.save_csv(output_file)
+            parser.save_csv(dataset_name=dataset_name)
         elif sys.argv[i] == "--text":
-            output_file = f"report_{dataset_name}.txt" if dataset_name else "summary.txt"
-            parser.save_text(output_file)
+            parser.save_text(dataset_name=dataset_name)
         elif sys.argv[i] == "--markdown":
-            output_file = f"report_{dataset_name}.md" if dataset_name else "summary.md"
-            parser.save_markdown(output_file)
+            parser.save_markdown(dataset_name=dataset_name)
         elif sys.argv[i] == "--update-readme":
             if not dataset_name:
                 logger.error("--dataset parameter is required for --update-readme")
