@@ -19,7 +19,7 @@ SAVE_PATH="$DUMPS/$DATASET.neo4j"
 
 if [ -d "$SAVE_PATH" ]; then
     echo "$DATASET dump already exists in $SAVE_PATH. Skipping..."
-    exit 1
+    exit 2
 fi
 
 # Stop Neo4j

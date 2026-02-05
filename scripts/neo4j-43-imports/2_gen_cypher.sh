@@ -16,7 +16,7 @@ FILE_PATH="$DUMPS/$DATASET.cypher"
 
 if [ -f $FILE_PATH ]; then
     echo "- $FILE_PATH already exists. Skipping..."
-    exit 1
+    exit 2
 fi
 
 bench neo4j start || true
