@@ -20,6 +20,11 @@ class BenchmarkReportParser:
     
     def __init__(self, report_file: str, metric: str = "mean"):
         self.report_file = Path(report_file)
+        
+        # Validate that report file exists
+        if not self.report_file.exists():
+            raise FileNotFoundError(f"Report file not found: {self.report_file}")
+        
         self.content = self.report_file.read_text()
         self.tools_data: Dict[str, Dict[str, str]] = {}
         self.summary: List[Dict[str, str]] = []
@@ -233,16 +238,23 @@ class BenchmarkReportParser:
             return ""
         
         tools = list(self.tools_data.keys())
+        
+        # Calculate actual column widths based on content
+        query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=5))
+        tool_widths = {}
+        for tool in tools:
+            tool_widths[tool] = max(len(tool), max((len(row[tool]) for row in self.summary), default=5))
+        
         lines = []
         
         # Header and separator
         lines.append("| Query | " + " | ".join(tools) + " |")
-        lines.append("|" + "|".join(["-" * 80] + ["-" * 20 for _ in tools]) + "|")
+        lines.append("|" + "|".join(["-" * (query_width + 2)] + ["-" * (tool_widths[t] + 2) for t in tools]) + "|")
         
         # Data rows
         for row in self.summary:
-            query = row["Query"]
-            means = " | ".join(row[tool] for tool in tools)
+            query = row["Query"].ljust(query_width)
+            means = " | ".join(row[tool].ljust(tool_widths[tool]) for tool in tools)
             lines.append(f"| {query} | {means} |")
         
         return "\n".join(lines)
