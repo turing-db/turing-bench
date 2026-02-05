@@ -5,11 +5,18 @@ shopt -s expand_aliases
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 source "$REPO_ROOT/env.sh"
-SAVE_PATH="$DUMPS/reactome.memgraph"
-SCRIPT_PATH="$DUMPS/reactome.cypher"
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <dataset>"
+    exit 1
+fi
+
+DATASET=$1
+SAVE_PATH="$DUMPS/$DATASET.memgraph"
+SCRIPT_PATH="$DUMPS/$DATASET.cypher"
 
 if [ -d "$SAVE_PATH" ]; then
-    echo "Reactome data folder already exists in $SAVE_PATH. Skipping..."
+    echo "$DATASET data folder already exists in $SAVE_PATH. Skipping..."
     exit 1
 fi
 

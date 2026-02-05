@@ -6,12 +6,19 @@ shopt -s expand_aliases
 REPO_ROOT=$(git rev-parse --show-toplevel)
 source "$REPO_ROOT/env.sh"
 
-DUMP_FILE="reactome.dump"
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <dataset>"
+    exit 1
+fi
+
+DATASET=$1
+
+DUMP_FILE="$DATASET.dump"
 DUMP_PATH="$NEO4J_IMPORT/$DUMP_FILE"
-SAVE_PATH="$DUMPS/reactome.neo4j"
+SAVE_PATH="$DUMPS/$DATASET.neo4j"
 
 if [ -d "$SAVE_PATH" ]; then
-    echo "Reactome dump already exists in $SAVE_PATH. Skipping..."
+    echo "$DATASET dump already exists in $SAVE_PATH. Skipping..."
     exit 1
 fi
 
@@ -26,18 +33,18 @@ elif [ -d "$NEO4J_DATA_DIR" ]; then
     echo "Remove Neo4j data directory..."
     rm -r $NEO4J_DATA_DIR
 else
-    echo "Reactome neo4j data directory does not exist"
+    echo "$DATASET neo4j data directory does not exist"
 fi
 
-# Load reactome in neo4j
-echo "Loading Reactome dump into Neo4j..."
+# Load in neo4j
+echo "Loading $DATASET dump into Neo4j..."
 cat $DUMP_PATH | neo4j-admin database load --from-stdin neo4j --overwrite-destination=true
-echo "Reactome successfully loaded in Neo4j."
+echo "$DATASET successfully loaded in Neo4j."
 
-# Migrate reactome from neo4j v4 to v5
+# Migrate from neo4j v4 to v5
 neo4j-admin database migrate neo4j --verbose --force-btree-indexes-to-range
 echo "Migration from Neo4j v4 to v5 done."
 
 mkdir -p $DUMPS || true
 cp -r "$NEO4J_DATA_DIR" "$SAVE_PATH"
-echo "Reactome dump successfully stored in $SAVE_PATH directory."
+echo "$DATASET dump successfully stored in $SAVE_PATH directory."
