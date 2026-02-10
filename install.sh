@@ -104,6 +104,9 @@ fi
 
 cd $install_dir
 
+# Install python 3.10 for memgraph
+uv python install 3.10
+
 # Download and install memgraph
 if [ ! -d "memgraph" ]; then
     echo "- Downloading memgraph"
@@ -117,5 +120,7 @@ if [ ! -d "memgraph" ]; then
 else
     echo "- Skipping memgraph installation: already installed"
 fi
+
+cd $install_dir
 
 echo "- Install complete"

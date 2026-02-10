@@ -17,7 +17,22 @@ export PATH=$PATH:"$install_dir/java/jdk-17.0.12/bin"
 export PATH=$PATH:"$install_dir/maven/apache-maven-3.9.12/bin"
 export PATH=$PATH:"$NEO4J_HOME/bin"
 
-alias memgraph="$install_dir/memgraph/usr/lib/memgraph/memgraph"
+memgraph() {
+    local python310 prefix
+    python310=$(uv python find 3.10) || { echo "Python 3.10 not found. Run: uv python install 3.10" >&2; return 1; }
+    prefix=$(dirname "$(dirname "$python310")")
+
+    if [ ! -f "$prefix/lib/libpython3.10.so.1.0" ]; then
+        echo "libpython3.10.so.1.0 not found in $prefix/lib" >&2
+        return 1
+    fi
+
+    LD_LIBRARY_PATH="$prefix/lib" \
+    PYTHONHOME="$prefix" \
+    PYTHONPATH="$prefix/lib/python3.10:$prefix/lib/python3.10/lib-dynload" \
+    exec "$MEMGRAPH_HOME/usr/lib/memgraph/memgraph" "$@"
+}
+
 alias mgconsole="$install_dir/memgraph/usr/bin/mgconsole"
 alias bench="uv run $SCRIPTS/manage_servers.py"
 
