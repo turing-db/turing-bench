@@ -27,7 +27,7 @@ echo "- Switching to dataset $DATASET"
 $SCRIPTS/switch-neo4j-dataset.sh $DATASET
 
 echo "- Running benchmark for 'turingdb'"
-bench turingdb start -- -turing-dir $DUMPS/$DATASET.turingdb -load $DATASET
+bench turingdb start -- -turing-dir "$DUMPS/$DATASET.turingdb" -load "$DATASET"
 uvrun turingdb --query-file $QUERY_FILE_PATH --database=$DATASET
 bench turingdb stop
 
