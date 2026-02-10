@@ -14,7 +14,5 @@ MATCH (p:Person)-[r]->(n) WHERE p.surname = 'Smith' RETURN p;
 MATCH (p1:Person)-[:PARTY_TO]->(c:Crime)<-[:PARTY_TO]-(p2:Person) WHERE p1 <> p2 RETURN p1.name, p2.name, c.type;
 MATCH (p1:Person)-[:KNOWS]->(p2:Person)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name LIMIT 50;
 MATCH (p1:Person)-[:KNOWS]->(p2:Person)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name;
-MATCH (p1:Person)-[:FAMILY_REL]-(p2:Person), (p1)-[:PARTY_TO]->(c:Crime)<-[:PARTY_TO]-(p2) RETURN p1.name, p2.name, c.type LIMIT 50;
-MATCH (p1:Person)-[:FAMILY_REL]-(p2:Person), (p1)-[:PARTY_TO]->(c:Crime)<-[:PARTY_TO]-(p2) RETURN p1.name, p2.name, c.type;
 MATCH (c:Crime)-[:OCCURRED_AT]->(l:Location) RETURN l.postcode LIMIT 20;
 MATCH (c:Crime)-[:OCCURRED_AT]->(l:Location) RETURN l.postcode;

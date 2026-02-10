@@ -26,4 +26,5 @@ cp "$JSON_FILE" "$SAVE_PATH/data/output.json"
 start=$(date +%s)
 echo "LOAD JSONL 'output.json' AS $DATASET;" | uv run turingdb -turing-dir $SAVE_PATH
 echo "- Loading $DATASET jsonl into turingdb took $(elapsed $start)"
+rm "$SAVE_PATH/data/output.json"
 
