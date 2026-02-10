@@ -14,14 +14,14 @@ fi
 DATASET=$1
 FILE_PATH="$DUMPS/$DATASET.jsonl"
 
-bench neo4j start || true
-
 start=`date +%s`
 
 if [ -f $FILE_PATH ]; then
     echo "- $FILE_PATH already exists. Skipping..."
     exit 2
 fi
+
+bench neo4j start || true
 
 # Export graph as jsonl file
 start=`date +%s`

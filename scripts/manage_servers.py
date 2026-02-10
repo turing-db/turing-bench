@@ -120,18 +120,30 @@ class ServerManager:
                 env=env,
             )
 
+            print("Saving PID...")
             self._save_pid(config.name, self.process.pid)
 
+            print("Waiting for server to be ready...")
             if config.name == "Memgraph":
                 if not self._wait_for_memgraph_ready(config):
+                    out, err = self.process.communicate()
+                    print(out)
+                    print(err)
                     return False
             elif config.name == "TuringDB":
                 if not self._wait_for_turingdb_ready(config):
+                    out, err = self.process.communicate()
+                    print("Could not wait for TuringDB to be ready")
+                    print(out)
+                    print(err)
                     return False
             elif config.name == "Neo4j":
                 if not self._wait_for_pattern(
                     config.start_ready_pattern, config.start_timeout, config.log_file
                 ):
+                    out, err = self.process.communicate()
+                    print(out)
+                    print(err)
                     return False
             else:
                 raise Exception(f"Unknown server type: {config.name}")
@@ -227,9 +239,9 @@ class ServerManager:
         """Wait for TuringDB to be ready"""
         start_time = time.time()
 
-        while time.time() - start_time < config.stop_timeout:
+        while time.time() - start_time < config.start_timeout:
             try:
-                cmd = "uv run python3 -c 'import turingdb; c = turingdb.TuringDB(); c.warmup()'"
+                cmd = "uv run python3 -c 'import turingdb; c = turingdb.TuringDB(host=\"http://localhost:6666\"); c.warmup()'"
                 res = subprocess.run(cmd, shell=True, capture_output=True)
                 if res.returncode == 0:
                     return True
