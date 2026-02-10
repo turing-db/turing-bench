@@ -31,6 +31,7 @@ start=`date +%s`
 echo "- Importing script in memgraph..."
 
 mgconsole --port 7688 < $SCRIPT_PATH
+echo 'CREATE SNAPSHOT;' | mgconsole --port 7688
 
 "$SCRIPTS/check-progress.sh"
 

@@ -13,7 +13,20 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 
+
+# Server configurations
+def _get_repo_root() -> Path:
+    """Get the absolute path to the repository root"""
+    # Script is at servers_python/manage_servers.py
+    return Path(__file__).parent.parent
+
+
 CLEARLINE = "\r\033[K"
+REPO_ROOT = _get_repo_root()
+INSTALL_FOLDER = (REPO_ROOT / "install").absolute()
+MEMGRAPH_BINARY = f"{INSTALL_FOLDER}/memgraph/usr/lib/memgraph/memgraph"
+MEMGRAPH_LOG_FILE = f"{INSTALL_FOLDER}/memgraph/log"
+MGCONSOLE_BINARY = f"{INSTALL_FOLDER}/memgraph/usr/bin/mgconsole"
 
 
 @dataclass
@@ -79,7 +92,7 @@ class ServerManager:
     def _is_memgraph_running(self) -> bool:
         """Check if Neo4j is actually running"""
         result = subprocess.run(
-            "echo 'RETURN 1;' | mgconsole --port 7688",
+            f"echo 'RETURN 1;' | {MGCONSOLE_BINARY} --port 7688",
             shell=True,
             capture_output=True,
         )
@@ -109,6 +122,22 @@ class ServerManager:
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
 
+            if config.name == "Memgraph":
+                result = subprocess.run(
+                    ["uv", "python", "find", "3.10"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                python310 = result.stdout.strip()
+                prefix = os.path.dirname(os.path.dirname(python310))
+
+                env["LD_LIBRARY_PATH"] = f"{prefix}/lib"
+                env["PYTHONHOME"] = prefix
+                env["PYTHONPATH"] = (
+                    f"{prefix}/lib/python3.10:{prefix}/lib/python3.10/lib-dynload"
+                )
+
             self.process = subprocess.Popen(
                 f"{config.start_command} {additional_args}",
                 shell=True,
@@ -120,10 +149,8 @@ class ServerManager:
                 env=env,
             )
 
-            print("Saving PID...")
             self._save_pid(config.name, self.process.pid)
 
-            print("Waiting for server to be ready...")
             if config.name == "Memgraph":
                 if not self._wait_for_memgraph_ready(config):
                     out, err = self.process.communicate()
@@ -166,7 +193,11 @@ class ServerManager:
         print(f"{CLEARLINE}  Stopping {config.name}...", end="")
 
         if config.stop_command:
-            subprocess.run(f"{config.stop_command} {additional_args}", shell=True, capture_output=True)
+            subprocess.run(
+                f"{config.stop_command} {additional_args}",
+                shell=True,
+                capture_output=True,
+            )
         elif config.stop_input:
             if self.process and self.process.stdin:
                 try:
@@ -222,7 +253,7 @@ class ServerManager:
 
             try:
                 res = subprocess.run(
-                    f"echo 'RETURN 1;' | mgconsole --port 7688",
+                    f"echo 'RETURN 1;' | {MGCONSOLE_BINARY} --port 7688",
                     shell=True,
                     capture_output=True,
                 )
@@ -295,19 +326,6 @@ class ServerManager:
         return False
 
 
-# Server configurations
-def _get_repo_root() -> Path:
-    """Get the absolute path to the repository root"""
-    # Script is at servers_python/manage_servers.py
-    return Path(__file__).parent.parent
-
-
-repo_root = _get_repo_root()
-install_folder = (repo_root / "install").absolute()
-
-MEMGRAPH_BINARY = f"{install_folder}/memgraph/usr/lib/memgraph/memgraph"
-MEMGRAPH_LOG_FILE = f"{install_folder}/memgraph/log"
-
 SERVERS = {
     "turingdb": ServerConfig(
         name="TuringDB",
@@ -325,6 +343,7 @@ SERVERS = {
         start_command=f"{MEMGRAPH_BINARY} "
         + f"--log-file={MEMGRAPH_LOG_FILE} "
         + f"--storage-mode=IN_MEMORY_ANALYTICAL "
+        + f"--storage-properties-on-edges=true "
         + f"--bolt-port=7688",
         stop_command="pkill -15 memgraph",
         start_timeout=120,
@@ -353,7 +372,7 @@ Examples:
     )
 
     parser.add_argument("action", choices=["start", "stop"], help="Action to perform")
-    parser.add_argument('additional', nargs=argparse.REMAINDER)
+    parser.add_argument("additional", nargs=argparse.REMAINDER)
 
     args = parser.parse_args()
 

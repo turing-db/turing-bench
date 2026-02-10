@@ -2,6 +2,9 @@
 
 shopt -s expand_aliases
 
+REPO_ROOT=$(git rev-parse --show-toplevel)
+source "$REPO_ROOT/env.sh"
+
 function check_result() {
     res=$?
     if [ $res -ne 0 ]; then
