@@ -337,22 +337,47 @@ class BenchmarkReportParser:
 
         return "\n".join(lines)
     
+    def _sort_benchmark_subsections(self, content: str) -> str:
+        """Sort ### subsections under ## Benchmark Results alphabetically"""
+        # Find the Benchmark Results section
+        section_match = re.search(r"(## Benchmark Results\n+)", content)
+        if not section_match:
+            return content
+
+        section_start = section_match.end()
+
+        # Find where the section ends (next ## heading or end of file)
+        next_section = re.search(r"\n## ", content[section_start:])
+        section_end = section_start + next_section.start() if next_section else len(content)
+
+        section_body = content[section_start:section_end]
+
+        # Split into subsections (each starts with ### )
+        subsections = re.split(r"(?=### )", section_body)
+        subsections = [s for s in subsections if s.strip()]
+
+        # Sort alphabetically by subsection title
+        subsections.sort(key=lambda s: re.match(r"### (.+)", s).group(1).lower() if re.match(r"### (.+)", s) else "")
+
+        sorted_body = "\n".join(s.rstrip() for s in subsections) + "\n"
+        return content[:section_start] + sorted_body + content[section_end:]
+
     def update_readme(self, dataset_name: str) -> None:
         """Update README.md with benchmark results for specific dataset"""
         repo_root = self._get_repo_root()
         readme_path = repo_root / "README.md"
-        
+
         if not readme_path.exists():
             logger.error(f"{readme_path} not found")
             return
-        
+
         content = readme_path.read_text()
         markdown_table = self._generate_markdown_table()
-        
+
         # Create dataset-specific markers
         start_marker = f"<!-- BENCHMARK_RESULTS_{dataset_name.upper()}_START -->"
         end_marker = f"<!-- BENCHMARK_RESULTS_{dataset_name.upper()}_END -->"
-        
+
         # Replace existing section or add new one
         if start_marker in content:
             pattern = f"{start_marker}.*?{end_marker}"
@@ -362,17 +387,20 @@ class BenchmarkReportParser:
             # Ensure Benchmark Results section exists
             if "## Benchmark Results" not in content:
                 content += "\n## Benchmark Results\n\n"
-            
+
             # Add new dataset subsection
             dataset_subsection = f"### {dataset_name.capitalize()}\n\n{start_marker}\n{markdown_table}\n{end_marker}\n\n"
-            
+
             benchmark_section_match = re.search(r"(## Benchmark Results\n)", content)
             if benchmark_section_match:
                 insert_pos = benchmark_section_match.end()
                 content = content[:insert_pos] + dataset_subsection + content[insert_pos:]
             else:
                 content += dataset_subsection
-        
+
+        # Sort subsections alphabetically
+        content = self._sort_benchmark_subsections(content)
+
         readme_path.write_text(content)
         logger.info(f"README.md updated with benchmark results for {dataset_name}")
     
