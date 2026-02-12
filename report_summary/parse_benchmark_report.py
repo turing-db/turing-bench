@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Parse benchmark report and create summary table"""
 
+import os
+import platform
 import re
 import sys
 import subprocess
@@ -337,6 +339,71 @@ class BenchmarkReportParser:
 
         return "\n".join(lines)
     
+    @staticmethod
+    def _get_machine_specs() -> str:
+        """Collect machine specs and return as a markdown line"""
+        specs = []
+
+        # CPU model
+        try:
+            with open("/proc/cpuinfo") as f:
+                for line in f:
+                    if line.startswith("model name"):
+                        cpu_model = line.split(":", 1)[1].strip()
+                        specs.append(f"**CPU**: {cpu_model}")
+                        break
+        except OSError:
+            pass
+
+        # CPU cores / threads
+        try:
+            cores = os.cpu_count()
+            if cores:
+                specs.append(f"**Cores**: {cores}")
+        except Exception:
+            pass
+
+        # RAM
+        try:
+            with open("/proc/meminfo") as f:
+                for line in f:
+                    if line.startswith("MemTotal"):
+                        kb = int(line.split()[1])
+                        gb = round(kb / 1024 / 1024, 1)
+                        specs.append(f"**RAM**: {gb} GB")
+                        break
+        except OSError:
+            pass
+
+        # OS
+        try:
+            result = subprocess.run(
+                ["lsb_release", "-ds"],
+                capture_output=True, text=True, check=True
+            )
+            os_name = result.stdout.strip().strip('"')
+            specs.append(f"**OS**: {os_name}")
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            specs.append(f"**OS**: {platform.system()} {platform.release()}")
+
+        # Storage type
+        try:
+            result = subprocess.run(
+                ["lsblk", "-d", "-o", "NAME,ROTA", "--noheadings"],
+                capture_output=True, text=True, check=True
+            )
+            for line in result.stdout.strip().split("\n"):
+                parts = line.split()
+                if len(parts) == 2:
+                    rotational = parts[1] == "1"
+                    disk_type = "HDD" if rotational else "SSD"
+                    specs.append(f"**Storage**: {disk_type}")
+                    break
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+        return " | ".join(specs)
+
     def _sort_benchmark_subsections(self, content: str) -> str:
         """Sort ### subsections under ## Benchmark Results alphabetically"""
         # Find the Benchmark Results section
@@ -373,6 +440,8 @@ class BenchmarkReportParser:
 
         content = readme_path.read_text()
         markdown_table = self._generate_markdown_table()
+        machine_specs = self._get_machine_specs()
+        section_content = f"> {machine_specs}\n\n{markdown_table}"
 
         # Create dataset-specific markers
         start_marker = f"<!-- BENCHMARK_RESULTS_{dataset_name.upper()}_START -->"
@@ -381,7 +450,7 @@ class BenchmarkReportParser:
         # Replace existing section or add new one
         if start_marker in content:
             pattern = f"{start_marker}.*?{end_marker}"
-            new_section = f"{start_marker}\n{markdown_table}\n{end_marker}"
+            new_section = f"{start_marker}\n{section_content}\n{end_marker}"
             content = re.sub(pattern, new_section, content, flags=re.DOTALL)
         else:
             # Ensure Benchmark Results section exists
@@ -389,7 +458,7 @@ class BenchmarkReportParser:
                 content += "\n## Benchmark Results\n\n"
 
             # Add new dataset subsection
-            dataset_subsection = f"### {dataset_name.capitalize()}\n\n{start_marker}\n{markdown_table}\n{end_marker}\n\n"
+            dataset_subsection = f"### {dataset_name.capitalize()}\n\n{start_marker}\n{section_content}\n{end_marker}\n\n"
 
             benchmark_section_match = re.search(r"(## Benchmark Results\n)", content)
             if benchmark_section_match:
