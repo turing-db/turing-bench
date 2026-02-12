@@ -1,36 +1,120 @@
 # `turing-bench`
-> Benchmarking tool for TuringDB.
 
-## Usage (TuringDB)
-1. Run a TuringDB instance, noting the address where the instance can be hit
-2. Run the `turingdb_driver.py` script,
+Graph database benchmarking tool that measures query performance across **TuringDB**, **Neo4j**, and **Memgraph** using real-world datasets (Reactome, PoleDB).
 
-Example usage:
+## Prerequisites
+
+- Linux (Debian-based, e.g. Ubuntu 22.04)
+- Python >= 3.13
+- [`uv`](https://docs.astral.sh/uv/) (Python package manager)
+- `wget`, `git`, `tar`, `dpkg-deb`
+- AWS CLI configured with the `turingdb_intern` profile (for downloading datasets)
+
+## Getting started
+
+### 1. Clone the repository
 
 ```bash
-python3 turingdb_driver.py --query turingdbsample.cypher --database reactome --url 'http://localhost:6666' --runs 100
+git clone https://github.com/turing-db/turing-bench.git
+cd turing-bench
 ```
 
-This will run the queries in `turingdbsample.cypher` against the `reactome` database, running each query `100` times.
-
-You may specify any URL and port with a running TuringDB server using the `--url` or `-u` options. If left unspecified, `turing-bench` assumes there is a TuringDB server running locally, and attempts to query `http://127.0.0.1:6666`.
-
-## Usage (Other DBs)
-Other DBs can be supported by inheriting from and implementing the `AbstractDriver` class (see `drivers/neo4j_driver.py` or `drivers/turingdb_driver.py` for examples).
-
-## Installation of other DBMSs: Neo4j and Memgraph
+### 2. Install database engines
 
 > [!WARNING]
-> The script can only be ran on Debian based systems for now.
+> The install script only supports Debian-based systems. It downloads and builds Neo4j from source, which requires Java 17 and Maven (both installed automatically).
 
-Run the `./install.sh` script to install the necessary dependencies as well as Neo4j and Memgraph.
+```bash
+./install.sh
+# To start fresh, run: ./install.sh --clean
+```
+
+This installs the following under `install/`:
+- **Java 17** and **Maven** (needed to build Neo4j)
+- **Neo4j** (community edition, built from source) + APOC plugin
+- **Memgraph** (extracted from `.deb` package)
+
+TuringDB is installed automatically as a Python dependency when running the benchmark.
+
+### 3. Set up the environment
+
+This must be run in every new shell session before using `bench` or running benchmarks:
+
+```bash
+source env.sh
+```
+
+This adds database binaries to your `PATH` and defines the `bench` alias used to manage servers.
+
+### 4. Download and import datasets
+
+Each dataset must be downloaded and converted into the formats used by all three engines. The `run_all.sh` script handles the full pipeline:
+
+```bash
+./scripts/neo4j-43-imports/run_all.sh reactome
+./scripts/neo4j-43-imports/run_all.sh poledb
+```
+
+For each dataset, this runs the following steps (see `scripts/neo4j-43-imports/`):
+
+1. **Download** the raw Neo4j 4.3 dump (`0_download.sh`)
+2. **Migrate** the dump to Neo4j 5 and save it to `dumps/<dataset>.neo4j` (`1_migrate.sh`)
+3. **Export to Cypher** -- generates a `.cypher` script containing all nodes, relationships, and indexes. This script will be used to generate Memgraph dump. (`2_gen_cypher.sh`)
+4. **Export to JSONL** -- generates a `.jsonl` file with the dataset in JSON Lines format. This graph will be used to create TuringDB graph. (`3_gen_jsonl.sh`)
+5. **Load into Memgraph** and save snapshot to `dumps/<dataset>.memgraph` (`4_load_in_memgraph.sh`)
+6. **Load into TuringDB** and save to `dumps/<dataset>.turingdb` (`5_load_in_turingdb.sh`)
 
 > [!NOTE]
-> Optionnaly, run `./install.sh --clean` to run a clean install 
+> All three database engines must be installed (step 2) before importing datasets, since the pipeline starts and stops each engine during the process.
 
-- Run `source ./env.sh` to setup the environment variables
+## Running benchmarks
 
+### Full benchmark (all three engines)
 
+The `run.sh` script stops all databases, loads the specified dataset, and benchmarks each engine sequentially:
+
+```bash
+./run.sh reactome                       # uses default query file
+./run.sh poledb queries_poledb.cypher   # specify dataset + query file
+```
+
+### Individual engine benchmarks
+
+Start a database, run the benchmark, then stop it:
+
+```bash
+source env.sh
+
+# TuringDB
+bench turingdb start -- -turing-dir dumps/reactome.turingdb -load reactome
+uv run python -m turingbench turingdb --query-file sample_queries/reactome/queries_reactome.cypher --database=reactome
+bench turingdb stop
+
+# Neo4j
+bench neo4j start
+uv run python -m turingbench neo4j --query-file sample_queries/reactome/queries_reactome.cypher
+bench neo4j stop
+
+# Memgraph
+bench memgraph start -- --data-directory=dumps/reactome.memgraph
+uv run python -m turingbench memgraph --query-file sample_queries/reactome/queries_reactome.cypher --url=bolt://localhost:7688
+bench memgraph stop
+```
+
+### Server management
+
+```bash
+bench <engine> start    # start a database (turingdb, neo4j, memgraph)
+bench <engine> stop     # stop a database
+bench all stop          # stop all databases
+```
+
+## Available datasets
+
+| Dataset    | Query file                                          |
+|------------|-----------------------------------------------------|
+| `reactome` | `sample_queries/reactome/queries_reactome.cypher`   |
+| `poledb`   | `sample_queries/poledb/queries_poledb.cypher`       |
 
 ## Benchmark Results
 ### Poledb
