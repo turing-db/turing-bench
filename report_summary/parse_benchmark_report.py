@@ -185,40 +185,75 @@ class BenchmarkReportParser:
         
         return queries
     
+    @staticmethod
+    def _parse_ms(value: str) -> float | None:
+        """Parse a metric value like '5ms' or '1265ms' into a float, or None if unparseable"""
+        match = re.match(r'(\d+(?:\.\d+)?)\s*ms', value.strip())
+        if match:
+            return float(match.group(1))
+        return None
+
+    @staticmethod
+    def _format_speedup(ratio: float) -> str:
+        """Format a speedup ratio as a human-readable string"""
+        if ratio >= 10:
+            return f"{ratio:.0f}x"
+        return f"{ratio:.1f}x"
+
     def create_summary(self) -> List[Dict[str, str]]:
-        """Create summary table with queries and metrics per tool"""
+        """Create summary table with queries and metrics per tool, plus speedup columns"""
         queries = self.get_all_queries()
         tools = list(self.tools_data.keys())
-        
+
         self.summary = []
         for query in queries:
             row = {"Query": query}
             for tool in tools:
                 metric_value = self.tools_data.get(tool, {}).get(query, "-")
                 row[tool] = metric_value
+
+            # Add speedup columns if TuringDB data is present
+            turing_val = self._parse_ms(row.get("TuringDB", "-"))
+            if turing_val and turing_val > 0:
+                for tool in tools:
+                    if tool == "TuringDB":
+                        continue
+                    other_val = self._parse_ms(row.get(tool, "-"))
+                    col = f"vs {tool}"
+                    if other_val:
+                        row[col] = self._format_speedup(other_val / turing_val)
+                    else:
+                        row[col] = "-"
+
             self.summary.append(row)
-        
+
         return self.summary
     
+    def _get_columns(self) -> List[str]:
+        """Get all data columns (tools + speedup columns) from summary rows"""
+        if not self.summary:
+            return list(self.tools_data.keys())
+        return [k for k in self.summary[0].keys() if k != "Query"]
+
     def save_csv(self, output_file: str = None, dataset_name: str = None) -> None:
         """Save summary as CSV"""
         if not self.summary:
             logger.warning("No data to save")
             return
-        
+
         output_dir = self._ensure_output_dir(dataset_name)
-        
+
         if output_file is None:
             output_file = f"report_{dataset_name}.csv" if dataset_name else "summary.csv"
-        
+
         output_path = output_dir / output_file
-        
-        fieldnames = ["Query"] + list(self.tools_data.keys())
+
+        fieldnames = ["Query"] + self._get_columns()
         with open(output_path, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(self.summary)
-        
+
         logger.info(f"Summary saved to {output_path}")
     
     def save_text(self, output_file: str = None, dataset_name: str = None) -> None:
@@ -226,37 +261,36 @@ class BenchmarkReportParser:
         if not self.summary:
             logger.warning("No data to save")
             return
-        
+
         output_dir = self._ensure_output_dir(dataset_name)
-        
+
         if output_file is None:
             output_file = f"report_{dataset_name}.txt" if dataset_name else "summary.txt"
-        
+
         output_path = output_dir / output_file
-        
-        tools = list(self.tools_data.keys())
-        
+
+        columns = self._get_columns()
+
         # Calculate column widths
         query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=0))
-        col_width = max(len(tool) for tool in tools)
-        col_width = max(col_width, max((len(row[tool]) for row in self.summary for tool in tools), default=0))
-        
+        col_widths = {col: max(len(col), max((len(row.get(col, "-")) for row in self.summary), default=0)) for col in columns}
+
         # Write header and rows
-        header = "Query".ljust(query_width) + " | " + " | ".join(tool.ljust(col_width) for tool in tools)
+        header = "Query".ljust(query_width) + " | " + " | ".join(col.ljust(col_widths[col]) for col in columns)
         separator = "-" * len(header)
-        
+
         with open(output_path, 'w') as f:
             f.write(separator + "\n")
             f.write(header + "\n")
             f.write(separator + "\n")
-            
+
             for row in self.summary:
                 query = row["Query"].ljust(query_width)
-                means = " | ".join(row[tool].ljust(col_width) for tool in tools)
-                f.write(query + " | " + means + "\n")
-            
+                values = " | ".join(row.get(col, "-").ljust(col_widths[col]) for col in columns)
+                f.write(query + " | " + values + "\n")
+
             f.write(separator + "\n")
-        
+
         logger.info(f"Summary saved to {output_path}")
     
     def save_markdown(self, output_file: str = None, dataset_name: str = None) -> None:
@@ -282,27 +316,25 @@ class BenchmarkReportParser:
         """Generate markdown table as string"""
         if not self.summary:
             return ""
-        
-        tools = list(self.tools_data.keys())
-        
+
+        columns = self._get_columns()
+
         # Calculate actual column widths based on content
         query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=5))
-        tool_widths = {}
-        for tool in tools:
-            tool_widths[tool] = max(len(tool), max((len(row[tool]) for row in self.summary), default=5))
-        
+        col_widths = {col: max(len(col), max((len(row.get(col, "-")) for row in self.summary), default=5)) for col in columns}
+
         lines = []
-        
+
         # Header and separator
-        lines.append("| Query | " + " | ".join(tools) + " |")
-        lines.append("|" + "|".join(["-" * (query_width + 2)] + ["-" * (tool_widths[t] + 2) for t in tools]) + "|")
-        
+        lines.append("| Query | " + " | ".join(columns) + " |")
+        lines.append("|" + "|".join(["-" * (query_width + 2)] + ["-" * (col_widths[c] + 2) for c in columns]) + "|")
+
         # Data rows
         for row in self.summary:
             query = row["Query"].ljust(query_width)
-            means = " | ".join(row[tool].ljust(tool_widths[tool]) for tool in tools)
-            lines.append(f"| {query} | {means} |")
-        
+            values = " | ".join(row.get(col, "-").ljust(col_widths[col]) for col in columns)
+            lines.append(f"| {query} | {values} |")
+
         return "\n".join(lines)
     
     def update_readme(self, dataset_name: str) -> None:
@@ -349,23 +381,22 @@ class BenchmarkReportParser:
         if not self.summary:
             logger.warning("No data to print")
             return
-        
-        tools = list(self.tools_data.keys())
-        
+
+        columns = self._get_columns()
+
         # Calculate column widths
         query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=0))
-        col_width = max(len(tool) for tool in tools)
-        col_width = max(col_width, max((len(row[tool]) for row in self.summary for tool in tools), default=0))
-        
+        col_widths = {col: max(len(col), max((len(row.get(col, "-")) for row in self.summary), default=0)) for col in columns}
+
         # Print header
-        print("Query".ljust(query_width) + " | " + " | ".join(tool.ljust(col_width) for tool in tools))
-        print("-" * (query_width + 3 + (col_width + 3) * len(tools)))
-        
+        print("Query".ljust(query_width) + " | " + " | ".join(col.ljust(col_widths[col]) for col in columns))
+        print("-" * (query_width + 3 + sum(col_widths[col] + 3 for col in columns)))
+
         # Print rows
         for row in self.summary:
             query = row["Query"].ljust(query_width)
-            means = " | ".join(row[tool].ljust(col_width) for tool in tools)
-            print(query + " | " + means)
+            values = " | ".join(row.get(col, "-").ljust(col_widths[col]) for col in columns)
+            print(query + " | " + values)
 
 
 def main():
