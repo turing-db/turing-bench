@@ -324,8 +324,8 @@ class BenchmarkReportParser:
 
         columns = self._get_columns()
 
-        # Calculate actual column widths based on content
-        query_width = max(len("Query"), max((len(row["Query"]) for row in self.summary), default=5))
+        # Calculate actual column widths based on content (+ 2 for backticks around query)
+        query_width = max(len("Query"), max((len(row["Query"]) + 2 for row in self.summary), default=5))
         col_widths = {col: max(len(col), max((len(row.get(col, "-")) for row in self.summary), default=5)) for col in columns}
 
         lines = []
@@ -336,7 +336,7 @@ class BenchmarkReportParser:
 
         # Data rows
         for row in self.summary:
-            query = row["Query"].ljust(query_width)
+            query = f"`{row['Query']}`".ljust(query_width)
             values = " | ".join(row.get(col, "-").ljust(col_widths[col]) for col in columns)
             lines.append(f"| {query} | {values} |")
 
