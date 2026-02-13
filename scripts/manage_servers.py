@@ -329,22 +329,22 @@ class ServerManager:
 SERVERS = {
     "turingdb": ServerConfig(
         name="TuringDB",
-        start_command=f"uv run turingdb -demon",
+        start_command="uv run turingdb -demon",
         stop_command="pkill -15 turingdb",
     ),
     "neo4j": ServerConfig(
         name="Neo4j",
-        start_command=f"neo4j start",
+        start_command="neo4j start",
         start_ready_pattern="Started neo4j",
-        stop_command=f"neo4j stop",
+        stop_command="neo4j stop",
     ),
     "memgraph": ServerConfig(
         name="Memgraph",
         start_command=f"{MEMGRAPH_BINARY} "
         + f"--log-file={MEMGRAPH_LOG_FILE} "
-        + f"--storage-mode=IN_MEMORY_ANALYTICAL "
-        + f"--storage-properties-on-edges=true "
-        + f"--bolt-port=7688",
+        + "--storage-mode=IN_MEMORY_ANALYTICAL "
+        + "--storage-properties-on-edges=true "
+        + "--bolt-port=7688",
         stop_command="pkill -15 memgraph",
         start_timeout=120,
         stop_timeout=120,
