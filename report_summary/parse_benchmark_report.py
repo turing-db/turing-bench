@@ -27,6 +27,8 @@ class BenchmarkReportParser:
         'neo4j': 'Neo4j',
         'memgraph': 'Memgraph'
     }
+
+    TOOL_DISPLAY_ORDER = ['TuringDB', 'Neo4j', 'Memgraph']
     
     def __init__(self, report_file: str, metric: str = "mean", output_dir: str = None):
         self.report_file = Path(report_file)
@@ -205,7 +207,8 @@ class BenchmarkReportParser:
     def create_summary(self) -> List[Dict[str, str]]:
         """Create summary table with queries and metrics per tool, plus speedup columns"""
         queries = self.get_all_queries()
-        tools = list(self.tools_data.keys())
+        # Use fixed display order, keeping only tools present in the data
+        tools = [t for t in self.TOOL_DISPLAY_ORDER if t in self.tools_data]
 
         self.summary = []
         for query in queries:
@@ -232,10 +235,10 @@ class BenchmarkReportParser:
         return self.summary
     
     def _get_columns(self) -> List[str]:
-        """Get all data columns (tools + speedup columns) from summary rows"""
-        if not self.summary:
-            return list(self.tools_data.keys())
-        return [k for k in self.summary[0].keys() if k != "Query"]
+        """Get all data columns (tools + speedup columns) in fixed display order"""
+        tools = [t for t in self.TOOL_DISPLAY_ORDER if t in self.tools_data]
+        speedup_cols = [f"Speedup vs {t}" for t in tools if t != "TuringDB"]
+        return tools + speedup_cols
 
     def save_csv(self, output_file: str = None, dataset_name: str = None) -> None:
         """Save summary as CSV"""
