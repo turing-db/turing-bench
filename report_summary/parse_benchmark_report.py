@@ -4,7 +4,6 @@
 import os
 import platform
 import re
-import sys
 import subprocess
 import csv
 import logging
@@ -145,7 +144,7 @@ class BenchmarkReportParser:
             query_idx = header_parts.index("query")
             metric_idx = header_parts.index(metric.lower())
         except ValueError:
-            logger.warning(f"Could not find required columns in header")
+            logger.warning("Could not find required columns in header")
             return query_metric
 
         # Parse table rows
