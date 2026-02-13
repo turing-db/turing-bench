@@ -124,18 +124,61 @@ bench all stop          # stop all databases
 
 | Query | TuringDB | Neo4j | Memgraph | Speedup vs Neo4j | Speedup vs Memgraph |
 |--------------------------------------------------------------------------------------------------------------------|----------|--------|----------|------------------|---------------------|
-| `MATCH (n) RETURN n`                                                                                               | 91ms     | 3692ms | 2495ms   | 41x              | 27x                 |
-| `MATCH (p:Person) RETURN p`                                                                                        | 5ms      | 141ms  | 32ms     | 28x              | 6.4x                |
-| `MATCH (p:Person) RETURN count(p)`                                                                                 | 1ms      | 95ms   | 11ms     | 95x              | 11x                 |
-| `MATCH (c:Crime) RETURN c`                                                                                         | 30ms     | 1396ms | 1305ms   | 47x              | 44x                 |
-| `MATCH (c:Crime) RETURN count(c)`                                                                                  | 2ms      | 68ms   | 13ms     | 34x              | 6.5x                |
-| `MATCH ()-[r]->() RETURN r`                                                                                        | 120ms    | 4520ms | 4133ms   | 38x              | 34x                 |
-| `MATCH ()-[r]->() RETURN count(r)`                                                                                 | 11ms     | 81ms   | 49ms     | 7.4x             | 4.5x                |
-| `MATCH (p:Person {name: 'John'})-[:PARTY_TO]->(c:Crime) RETURN p, c`                                               | 3ms      | 16ms   | 1ms      | 5.3x             | 0.3x                |
-| `MATCH (p:Person)-[:PARTY_TO]->(c:Crime) RETURN p.name, p.surname, c.type`                                         | 1ms      | 19ms   | 11ms     | 19x              | 11x                 |
-| `MATCH (p:Person {surname: 'Smith'})-[r]->(n) RETURN p`                                                            | 4ms      | 42ms   | 1ms      | 10x              | 0.2x                |
-| `MATCH (p:Person)-[r]->(n) WHERE p.surname = 'Smith' RETURN p`                                                     | 4ms      | 38ms   | 1ms      | 9.5x             | 0.2x                |
-| `MATCH (p1:Person)-[:PARTY_TO]->(c:Crime)<-[:PARTY_TO]-(p2:Person) WHERE p1 <> p2 RETURN p1.name, p2.name, c.type` | 1ms      | 90ms   | 8ms      | 90x              | 8.0x                |
-| `MATCH (p1:Person)-[:KNOWS]->(p2:Person)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name`                           | 1ms      | 20ms   | 13ms     | 20x              | 13x                 |
-| `MATCH (c:Crime)-[:OCCURRED_AT]->(l:Location) RETURN l.postcode`                                                   | 48ms     | 744ms  | 573ms    | 16x              | 12x                 |
+| `MATCH (n) RETURN n`                                                                                               | 73ms     | 3635ms | 2480ms   | 50x              | 34x                 |
+| `MATCH (p:Person) RETURN p`                                                                                        | 5ms      | 151ms  | 28ms     | 30x              | 5.6x                |
+| `MATCH (p:Person) RETURN count(p)`                                                                                 | 1ms      | 110ms  | 9ms      | 110x             | 9.0x                |
+| `MATCH (c:Crime) RETURN c`                                                                                         | 30ms     | 1411ms | 1308ms   | 47x              | 44x                 |
+| `MATCH (c:Crime) RETURN count(c)`                                                                                  | 2ms      | 41ms   | 14ms     | 20x              | 7.0x                |
+| `MATCH ()-[r]->() RETURN r`                                                                                        | 120ms    | 4546ms | 4088ms   | 38x              | 34x                 |
+| `MATCH ()-[r]->() RETURN count(r)`                                                                                 | 11ms     | 78ms   | 29ms     | 7.1x             | 2.6x                |
+| `MATCH (p:Person {name: 'John'})-[:PARTY_TO]->(c:Crime) RETURN p, c`                                               | 4ms      | 185ms  | 4ms      | 46x              | 1.0x                |
+| `MATCH (p:Person)-[:PARTY_TO]->(c:Crime) RETURN p.name, p.surname, c.type`                                         | 1ms      | 86ms   | 12ms     | 86x              | 12x                 |
+| `MATCH (p:Person {surname: 'Smith'})-[r]->(n) RETURN p`                                                            | 3ms      | 48ms   | 2ms      | 16x              | 0.7x                |
+| `MATCH (p:Person)-[r]->(n) WHERE p.surname = 'Smith' RETURN p`                                                     | 3ms      | 43ms   | 1ms      | 14x              | 0.3x                |
+| `MATCH (p1:Person)-[:PARTY_TO]->(c:Crime)<-[:PARTY_TO]-(p2:Person) WHERE p1 <> p2 RETURN p1.name, p2.name, c.type` | 1ms      | 97ms   | 10ms     | 97x              | 10x                 |
+| `MATCH (p1:Person)-[:KNOWS]->(p2:Person)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name`                           | 1ms      | 59ms   | 11ms     | 59x              | 11x                 |
+| `MATCH (c:Crime)-[:OCCURRED_AT]->(l:Location) RETURN l.postcode`                                                   | 46ms     | 706ms  | 557ms    | 15x              | 12x                 |
+| `MATCH (p1)-[:PARTY_TO]->(c:Crime), (p2)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name, c.type`                   | 21ms     | 105ms  | 12ms     | 5.0x             | 0.6x                |
 <!-- BENCHMARK_RESULTS_POLEDB_END -->
+### Reactome
+
+<!-- BENCHMARK_RESULTS_REACTOME_START -->
+> **CPU**: AMD EPYC 7313P 16-Core Processor | **Cores**: 32 | **RAM**: 125.4 GB | **OS**: Ubuntu 22.04.5 LTS | **Storage**: SSD
+
+| Query | TuringDB | Neo4j | Memgraph | Speedup vs Neo4j | Speedup vs Memgraph |
+|-------------------------------------------------------------------------------------------------------------|----------|----------|----------|------------------|---------------------|
+| `match (n:Drug) return n`                                                                                   | 5ms      | 1872ms   | 404ms    | 374x             | 81x                 |
+| `match (n:ProteinDrug) return n`                                                                            | 2ms      | 420ms    | 356ms    | 210x             | 178x                |
+| `match (n:Drug:ProteinDrug) return n`                                                                       | 1ms      | 568ms    | 339ms    | 568x             | 339x                |
+| `match (n:Taxon)-->(m:Species) return n,m`                                                                  | 2ms      | 555ms    | 333ms    | 278x             | 166x                |
+| `match (n)-->(m:Interaction)-->(o) return n,m,o`                                                            | 1265ms   | 74769ms  | 343ms    | 59x              | 0.3x                |
+| `match (n{displayName:"Autophagy"}) return n`                                                               | 275ms    | 1497ms   | 927ms    | 5.4x             | 3.4x                |
+| `match (n{displayName:"Autophagy"})-->(m) return m`                                                         | 237ms    | 1351ms   | 942ms    | 5.7x             | 4.0x                |
+| `match (n{displayName:"Autophagy"})-->(m)-->(p) return p`                                                   | 238ms    | 1351ms   | 1029ms   | 5.7x             | 4.3x                |
+| `match (n{displayName:"Autophagy"})-->(m)-->(p)-->(q) return q`                                             | 252ms    | 3845ms   | 1470ms   | 15x              | 5.8x                |
+| `match (n{displayName:"Autophagy"})-->(m)-->(p)-->(q)-->(r) return r`                                       | 297ms    | 4170ms   | 3626ms   | 14x              | 12x                 |
+| `match (n{displayName:"Autophagy"})-->(m)-->(p)-->(q)-->(r)-->(s) return s`                                 | 469ms    | 12438ms  | 11537ms  | 27x              | 25x                 |
+| `match (n{displayName:"Autophagy"})-->(m)-->(p)-->(q)-->(r)-->(s)-->(t) return t`                           | 1085ms   | 41730ms  | 36782ms  | 38x              | 34x                 |
+| `match (n{displayName:"Autophagy"})-->(m)-->(p)-->(q)-->(r)-->(s)-->(t)-->(v) return v`                     | 3002ms   | 153377ms | 104928ms | 51x              | 35x                 |
+| `match (n{displayName:"APOE-4 [extracellular region]"}) return n`                                           | 401ms    | 1631ms   | 1271ms   | 4.1x             | 3.2x                |
+| `match (n{displayName:"APOE-4 [extracellular region]"})-->(m) return m`                                     | 238ms    | 1370ms   | 965ms    | 5.8x             | 4.1x                |
+| `match (n{displayName:"APOE-4 [extracellular region]"})-->(m)-->(p) return p`                               | 244ms    | 1337ms   | 979ms    | 5.5x             | 4.0x                |
+| `match (n{displayName:"APOE-4 [extracellular region]"})-->(m)-->(p)-->(q) return q`                         | 251ms    | 1342ms   | 1034ms   | 5.3x             | 4.1x                |
+| `match (n{displayName:"APOE-4 [extracellular region]"})-->(m)-->(p)-->(q)-->(r) return r`                   | 242ms    | 1449ms   | 969ms    | 6.0x             | 4.0x                |
+| `match (n{displayName:"APOE-4 [extracellular region]"})-->(m)-->(p)-->(q)-->(r)-->(s) return s`             | 250ms    | 1422ms   | 971ms    | 5.7x             | 3.9x                |
+| `match (n{displayName:"APOE-4 [extracellular region]"})-->(m)-->(p)-->(q)-->(r)-->(s)-->(t) return t`       | 245ms    | 1472ms   | 1044ms   | 6.0x             | 4.3x                |
+| `match (n{displayName:"APOE-4 [extracellular region]"})-->(m)-->(p)-->(q)-->(r)-->(s)-->(t)-->(v) return v` | 249ms    | 21038ms  | 966ms    | 84x              | 3.9x                |
+| `match (n)-[e:release]->(m) return n,m`                                                                     | 487ms    | 9390ms   | 363ms    | 19x              | 0.7x                |
+| `match (n)-[e:interactor]->(m) return n,m`                                                                  | 759ms    | 58195ms  | 374ms    | 77x              | 0.5x                |
+| `match (n)-[e:surroundedBy]->(m) return n,m`                                                                | 329ms    | 2068ms   | 389ms    | 6.3x             | 1.2x                |
+| `match (n)-[:hasEvent]->(m) return n,m`                                                                     | 620ms    | 25504ms  | 16511ms  | 41x              | 27x                 |
+| `match (n:Pathway)-[:hasEvent]->(m:ReactionLikeEvent) return n,m`                                           | 257ms    | 19495ms  | 13822ms  | 76x              | 54x                 |
+| `match (r:ReactionLikeEvent)-[:output]->(s:PhysicalEntity) return r,s`                                      | 424ms    | 31566ms  | 24931ms  | 74x              | 59x                 |
+| `match (n:DatabaseObject{isChimeric:false}) return n`                                                       | 757ms    | 5782ms   | 3521ms   | 7.6x             | 4.7x                |
+| `match (n:DatabaseObject{isChimeric:true}) return n`                                                        | 627ms    | 1847ms   | 960ms    | 2.9x             | 1.5x                |
+| `match (b)-->(a:Pathway) return a`                                                                          | 735ms    | 12998ms  | 8779ms   | 18x              | 12x                 |
+| `match (c)-->(b)-->(a:Pathway) return a, c`                                                                 | 5354ms   | 79518ms  | 39263ms  | 15x              | 7.3x                |
+| `match (c)-->(b)-->(a:Pathway) return b`                                                                    | 4927ms   | 53988ms  | 25646ms  | 11x              | 5.2x                |
+| `match (c)-->(b)-->(a:Pathway) return c`                                                                    | 4913ms   | 42944ms  | 21601ms  | 8.7x             | 4.4x                |
+| `match (c)-->(b)-->(a:Pathway) return a`                                                                    | 4761ms   | 54560ms  | 26180ms  | 11x              | 5.5x                |
+<!-- BENCHMARK_RESULTS_REACTOME_END -->
