@@ -2,7 +2,6 @@
 
 import sys
 import argparse
-import pandas as pd
 from typing import List, Dict, Any, cast
 
 from .abstract_driver import AbstractDriver
