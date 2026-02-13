@@ -16,10 +16,10 @@ class BenchmarkResult:
 
 class AbstractDriver(ABC):
     """Abstract base class for database benchmarking"""
-    
+
     def __init__(self):
         self.connection = None
-    
+
     @abstractmethod
     def execute_query(self, query: str) -> List[Dict[str, Any]]:
         """
@@ -27,7 +27,7 @@ class AbstractDriver(ABC):
         Implement this to handle database-specific query execution.
         """
         pass
-    
+
     @abstractmethod
     def close(self) -> None:
         """
@@ -36,44 +36,38 @@ class AbstractDriver(ABC):
         Implement this to handle database-specific cleanup.
         """
         pass
-    
+
     def run_queries(self, queries: List[str], runs: int = 1) -> BenchmarkResult:
         """
         Run benchmark queries multiple times and collect timing data.
         This method is generic and doesn't need to be overridden.
         """
         res = BenchmarkResult()
-        
+
         for query in queries:
             print(f"Running benchmarks for: {query}")
             for _ in range(1, runs + 1):
                 query_timer = time.perf_counter_ns()
                 result = self.execute_query(query)
-                elapsed_us = (time.perf_counter_ns() - query_timer) // 1_000  # microseconds
-                
+                elapsed_us = (
+                    time.perf_counter_ns() - query_timer
+                ) // 1_000  # microseconds
+
                 res.query_times.setdefault(query, []).append(elapsed_us)
-                
+
                 if query not in res.query_sizes:
                     res.query_sizes[query] = len(result)
-        
+
         return res
-    
+
     def present_results(self, results: BenchmarkResult, runs: int) -> None:
         """
         Present benchmark results in a formatted table.
         This method is generic and doesn't need to be overridden.
         """
         table = []
-        headers = [
-            "Query",
-            "Mean",
-            "Min",
-            "Max",
-            "Median",
-            "Query/sec",
-            "Row count"
-        ]
-        
+        headers = ["Query", "Mean", "Min", "Max", "Median", "Query/sec", "Row count"]
+
         for query, times in results.query_times.items():
             times_sorted = sorted(times)
             n = runs
@@ -81,22 +75,30 @@ class AbstractDriver(ABC):
             mean = sum_ // n
             min_ = times_sorted[0]
             max_ = times_sorted[-1]
-            median = (times_sorted[n // 2 - 1] + times_sorted[n // 2]) // 2 if (n % 2 == 0) else times_sorted[n // 2]
-            throughput = n / ((sum_ / 1_000_000))  # n / total_seconds
-            
-            ms = lambda us: f"{us // 1_000}ms"
-            table.append([
-                query,
-                ms(mean),
-                ms(min_),
-                ms(max_),
-                ms(median),
-                f"{throughput:.6f}",
-                f"{results.query_sizes.get(query, '?')}"
-            ])
-        
+            median = (
+                (times_sorted[n // 2 - 1] + times_sorted[n // 2]) // 2
+                if (n % 2 == 0)
+                else times_sorted[n // 2]
+            )
+            throughput = n / (sum_ / 1_000_000)  # n / total_seconds
+
+            def ms(us):
+                return f"{us // 1_000}ms"
+
+            table.append(
+                [
+                    query,
+                    ms(mean),
+                    ms(min_),
+                    ms(max_),
+                    ms(median),
+                    f"{throughput:.6f}",
+                    f"{results.query_sizes.get(query, '?')}",
+                ]
+            )
+
         print(tabulate(table, headers=headers, tablefmt="grid"))
-    
+
     # DB-specific arguments (e.g. Neo4j password, etc.)
     @classmethod
     def add_db_arguments(cls, parser: argparse.ArgumentParser) -> None:
@@ -110,16 +112,28 @@ class AbstractDriver(ABC):
     @staticmethod
     def add_common_arguments(parser: argparse.ArgumentParser) -> None:
         """Add common arguments for all database benchmarks"""
-        parser.add_argument('--query-file', '-q', required=True, dest="query",
-                           help="The query file to run against the database")
-        parser.add_argument('--debug', '-d', action='store_true',
-                           help="Enable debug mode: logs errors of queries")
-        parser.add_argument('--runs', '-r', type=int, default=1,
-                           help="The number of runs per benchmark")
+        parser.add_argument(
+            "--query-file",
+            "-q",
+            required=True,
+            dest="query",
+            help="The query file to run against the database",
+        )
+        parser.add_argument(
+            "--debug",
+            "-d",
+            action="store_true",
+            help="Enable debug mode: logs errors of queries",
+        )
+        parser.add_argument(
+            "--runs", "-r", type=int, default=1, help="The number of runs per benchmark"
+        )
 
     # Combines derived db-specific and common arguments into a single argparser
     @classmethod
-    def create_argument_parser(cls, description: str = "Database Benchmarking Tool") -> argparse.ArgumentParser:
+    def create_argument_parser(
+        cls, description: str = "Database Benchmarking Tool"
+    ) -> argparse.ArgumentParser:
         """
         Create and configure argument parser with common and database-specific arguments.
         This is a convenience method that combines common and database-specific arguments.
