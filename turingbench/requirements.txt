@@ -1,5 +1,0 @@
-pyright
-tabulate
-
-neo4j
-turingdb
