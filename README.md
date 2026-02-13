@@ -122,21 +122,20 @@ bench all stop          # stop all databases
 <!-- BENCHMARK_RESULTS_POLEDB_START -->
 > **CPU**: AMD EPYC 7313P 16-Core Processor | **Cores**: 32 | **RAM**: 125.4 GB | **OS**: Ubuntu 22.04.5 LTS | **Storage**: SSD
 
-| Query | TuringDB | Neo4j | Memgraph | vs Neo4j | vs Memgraph |
-|------------------------------------------------------------------------------------------------------------------|----------|--------|----------|----------|-------------|
-| MATCH (n) RETURN n                                                                                               | 73ms     | 3635ms | 2480ms   | 50x      | 34x         |
-| MATCH (p:Person) RETURN p                                                                                        | 5ms      | 151ms  | 28ms     | 30x      | 5.6x        |
-| MATCH (p:Person) RETURN count(p)                                                                                 | 1ms      | 110ms  | 9ms      | 110x     | 9.0x        |
-| MATCH (c:Crime) RETURN c                                                                                         | 30ms     | 1411ms | 1308ms   | 47x      | 44x         |
-| MATCH (c:Crime) RETURN count(c)                                                                                  | 2ms      | 41ms   | 14ms     | 20x      | 7.0x        |
-| MATCH ()-[r]->() RETURN r                                                                                        | 120ms    | 4546ms | 4088ms   | 38x      | 34x         |
-| MATCH ()-[r]->() RETURN count(r)                                                                                 | 11ms     | 78ms   | 29ms     | 7.1x     | 2.6x        |
-| MATCH (p:Person {name: 'John'})-[:PARTY_TO]->(c:Crime) RETURN p, c                                               | 4ms      | 185ms  | 4ms      | 46x      | 1.0x        |
-| MATCH (p:Person)-[:PARTY_TO]->(c:Crime) RETURN p.name, p.surname, c.type                                         | 1ms      | 86ms   | 12ms     | 86x      | 12x         |
-| MATCH (p:Person {surname: 'Smith'})-[r]->(n) RETURN p                                                            | 3ms      | 48ms   | 2ms      | 16x      | 0.7x        |
-| MATCH (p:Person)-[r]->(n) WHERE p.surname = 'Smith' RETURN p                                                     | 3ms      | 43ms   | 1ms      | 14x      | 0.3x        |
-| MATCH (p1:Person)-[:PARTY_TO]->(c:Crime)<-[:PARTY_TO]-(p2:Person) WHERE p1 <> p2 RETURN p1.name, p2.name, c.type | 1ms      | 97ms   | 10ms     | 97x      | 10x         |
-| MATCH (p1:Person)-[:KNOWS]->(p2:Person)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name                           | 1ms      | 59ms   | 11ms     | 59x      | 11x         |
-| MATCH (c:Crime)-[:OCCURRED_AT]->(l:Location) RETURN l.postcode                                                   | 46ms     | 706ms  | 557ms    | 15x      | 12x         |
-| MATCH (p1)-[:PARTY_TO]->(c:Crime), (p2)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name, c.type                   | 21ms     | 105ms  | 12ms     | 5.0x     | 0.6x        |
+| Query | TuringDB | Neo4j | Memgraph | Speedup vs Neo4j | Speedup vs Memgraph |
+|--------------------------------------------------------------------------------------------------------------------|----------|--------|----------|------------------|---------------------|
+| `MATCH (n) RETURN n`                                                                                               | 91ms     | 3692ms | 2495ms   | 41x              | 27x                 |
+| `MATCH (p:Person) RETURN p`                                                                                        | 5ms      | 141ms  | 32ms     | 28x              | 6.4x                |
+| `MATCH (p:Person) RETURN count(p)`                                                                                 | 1ms      | 95ms   | 11ms     | 95x              | 11x                 |
+| `MATCH (c:Crime) RETURN c`                                                                                         | 30ms     | 1396ms | 1305ms   | 47x              | 44x                 |
+| `MATCH (c:Crime) RETURN count(c)`                                                                                  | 2ms      | 68ms   | 13ms     | 34x              | 6.5x                |
+| `MATCH ()-[r]->() RETURN r`                                                                                        | 120ms    | 4520ms | 4133ms   | 38x              | 34x                 |
+| `MATCH ()-[r]->() RETURN count(r)`                                                                                 | 11ms     | 81ms   | 49ms     | 7.4x             | 4.5x                |
+| `MATCH (p:Person {name: 'John'})-[:PARTY_TO]->(c:Crime) RETURN p, c`                                               | 3ms      | 16ms   | 1ms      | 5.3x             | 0.3x                |
+| `MATCH (p:Person)-[:PARTY_TO]->(c:Crime) RETURN p.name, p.surname, c.type`                                         | 1ms      | 19ms   | 11ms     | 19x              | 11x                 |
+| `MATCH (p:Person {surname: 'Smith'})-[r]->(n) RETURN p`                                                            | 4ms      | 42ms   | 1ms      | 10x              | 0.2x                |
+| `MATCH (p:Person)-[r]->(n) WHERE p.surname = 'Smith' RETURN p`                                                     | 4ms      | 38ms   | 1ms      | 9.5x             | 0.2x                |
+| `MATCH (p1:Person)-[:PARTY_TO]->(c:Crime)<-[:PARTY_TO]-(p2:Person) WHERE p1 <> p2 RETURN p1.name, p2.name, c.type` | 1ms      | 90ms   | 8ms      | 90x              | 8.0x                |
+| `MATCH (p1:Person)-[:KNOWS]->(p2:Person)-[:PARTY_TO]->(c:Crime) RETURN p1.name, p2.name`                           | 1ms      | 20ms   | 13ms     | 20x              | 13x                 |
+| `MATCH (c:Crime)-[:OCCURRED_AT]->(l:Location) RETURN l.postcode`                                                   | 48ms     | 744ms  | 573ms    | 16x              | 12x                 |
 <!-- BENCHMARK_RESULTS_POLEDB_END -->
