@@ -221,7 +221,7 @@ class BenchmarkReportParser:
                     if tool == "TuringDB":
                         continue
                     other_val = self._parse_ms(row.get(tool, "-"))
-                    col = f"vs {tool}"
+                    col = f"Speedup vs {tool}"
                     if other_val:
                         row[col] = self._format_speedup(other_val / turing_val)
                     else:
