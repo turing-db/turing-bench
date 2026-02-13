@@ -562,66 +562,56 @@ class BenchmarkReportParser:
 
 
 def main():
-    if len(sys.argv) < 2:
-        logger.error(
-            "Usage: python parse_benchmark_report.py <report_file> [--dataset <n>] [--output-dir <path>] [--print] [--csv] [--text] [--markdown] [--update-readme]"
-        )
-        logger.info("Examples:")
-        logger.info("  python parse_benchmark_report.py report.txt --print")
-        logger.info(
-            "  python parse_benchmark_report.py report.txt --metric min --dataset reactome --csv"
-        )
-        logger.info(
-            "  python parse_benchmark_report.py report.txt --dataset pokec_small --update-readme"
-        )
-        logger.info(
-            "  python parse_benchmark_report.py report.txt --dataset reactome --output-dir /custom/path --csv"
-        )
-        sys.exit(1)
+    import argparse
 
-    report_file = sys.argv[1]
-    dataset_name = None
-    metric = "mean"
-    output_dir = None
+    arg_parser = argparse.ArgumentParser(
+        description="Parse benchmark report and create summary table"
+    )
+    arg_parser.add_argument("report_file", help="Path to the benchmark report file")
+    arg_parser.add_argument(
+        "--dataset", help="Dataset name (required for --update-readme)"
+    )
+    arg_parser.add_argument(
+        "--metric", default="mean", help="Metric to extract (default: mean)"
+    )
+    arg_parser.add_argument("--output-dir", help="Custom output directory for reports")
+    arg_parser.add_argument(
+        "--print",
+        action="store_true",
+        dest="print_summary",
+        help="Print summary to stdout",
+    )
+    arg_parser.add_argument("--csv", action="store_true", help="Save summary as CSV")
+    arg_parser.add_argument("--text", action="store_true", help="Save summary as text")
+    arg_parser.add_argument(
+        "--markdown", action="store_true", help="Save summary as markdown"
+    )
+    arg_parser.add_argument(
+        "--update-readme", action="store_true", help="Update README.md with results"
+    )
 
-    # Parse --metric, --dataset, and --output-dir arguments
-    i = 2
-    while i < len(sys.argv):
-        if sys.argv[i] == "--metric" and i + 1 < len(sys.argv):
-            metric = sys.argv[i + 1]
-            i += 2
-        elif sys.argv[i] == "--dataset" and i + 1 < len(sys.argv):
-            dataset_name = sys.argv[i + 1]
-            i += 2
-        elif sys.argv[i] == "--output-dir" and i + 1 < len(sys.argv):
-            output_dir = sys.argv[i + 1]
-            i += 2
-        else:
-            break
+    args = arg_parser.parse_args()
 
-    # Parse report
-    parser = BenchmarkReportParser(report_file, metric=metric, output_dir=output_dir)
+    if args.update_readme and not args.dataset:
+        arg_parser.error("--dataset is required when using --update-readme")
+
+    parser = BenchmarkReportParser(
+        args.report_file, metric=args.metric, output_dir=args.output_dir
+    )
     parser.parse()
     parser.create_summary()
 
-    # Handle output formats
-    while i < len(sys.argv):
-        if sys.argv[i] == "--print":
-            parser.print_summary()
-        elif sys.argv[i] == "--csv":
-            parser.save_csv(dataset_name=dataset_name)
-        elif sys.argv[i] == "--text":
-            parser.save_text(dataset_name=dataset_name)
-        elif sys.argv[i] == "--markdown":
-            parser.save_markdown(dataset_name=dataset_name)
-        elif sys.argv[i] == "--update-readme":
-            if not dataset_name:
-                logger.error("--dataset parameter is required for --update-readme")
-                sys.exit(1)
-            assert dataset_name is not None
-            parser.update_readme(dataset_name)
-
-        i += 1
+    if args.print_summary:
+        parser.print_summary()
+    if args.csv:
+        parser.save_csv(dataset_name=args.dataset)
+    if args.text:
+        parser.save_text(dataset_name=args.dataset)
+    if args.markdown:
+        parser.save_markdown(dataset_name=args.dataset)
+    if args.update_readme:
+        assert args.dataset is not None
+        parser.update_readme(args.dataset)
 
 
 if __name__ == "__main__":
