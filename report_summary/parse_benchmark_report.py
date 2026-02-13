@@ -30,7 +30,7 @@ class BenchmarkReportParser:
 
     TOOL_DISPLAY_ORDER = ['TuringDB', 'Neo4j', 'Memgraph']
     
-    def __init__(self, report_file: str, metric: str = "mean", output_dir: str = None):
+    def __init__(self, report_file: str, metric: str = "mean", output_dir: str | None = None):
         self.report_file = Path(report_file)
         
         # Validate that report file exists
@@ -62,7 +62,7 @@ class BenchmarkReportParser:
                 current = current.parent
             raise RuntimeError("Could not find git repository root")
     
-    def _ensure_output_dir(self, dataset_name: str = None) -> Path:
+    def _ensure_output_dir(self, dataset_name: str | None = None) -> Path:
         """Get and create output directory if needed"""
         if self.output_dir:
             output_path = self.output_dir
@@ -127,7 +127,7 @@ class BenchmarkReportParser:
         self._save_tool_table(tools, current_tool, table_lines, header_match)
         return tools
     
-    def _save_tool_table(self, tools: dict, tool: str, lines: list, header: str) -> None:
+    def _save_tool_table(self, tools: dict, tool: str | None, lines: list, header: str | None) -> None:
         """Helper to save tool table data"""
         if tool and lines and header:
             tools[tool] = {
@@ -240,7 +240,7 @@ class BenchmarkReportParser:
         speedup_cols = [f"Speedup vs {t}" for t in tools if t != "TuringDB"]
         return tools + speedup_cols
 
-    def save_csv(self, output_file: str = None, dataset_name: str = None) -> None:
+    def save_csv(self, output_file: str | None = None, dataset_name: str | None = None) -> None:
         """Save summary as CSV"""
         if not self.summary:
             logger.warning("No data to save")
@@ -261,7 +261,7 @@ class BenchmarkReportParser:
 
         logger.info(f"Summary saved to {output_path}")
     
-    def save_text(self, output_file: str = None, dataset_name: str = None) -> None:
+    def save_text(self, output_file: str | None = None, dataset_name: str | None = None) -> None:
         """Save summary as formatted text table"""
         if not self.summary:
             logger.warning("No data to save")
@@ -298,7 +298,7 @@ class BenchmarkReportParser:
 
         logger.info(f"Summary saved to {output_path}")
     
-    def save_markdown(self, output_file: str = None, dataset_name: str = None) -> None:
+    def save_markdown(self, output_file: str | None = None, dataset_name: str | None = None) -> None:
         """Save summary as markdown table"""
         if not self.summary:
             logger.warning("No data to save")
@@ -427,7 +427,7 @@ class BenchmarkReportParser:
         subsections = [s for s in subsections if s.strip()]
 
         # Sort alphabetically by subsection title
-        subsections.sort(key=lambda s: re.match(r"### (.+)", s).group(1).lower() if re.match(r"### (.+)", s) else "")
+        subsections.sort(key=lambda s: m.group(1).lower() if (m := re.match(r"### (.+)", s)) else "")
 
         sorted_body = "\n".join(s.rstrip() for s in subsections) + "\n"
         return content[:section_start] + sorted_body + content[section_end:]
@@ -548,6 +548,7 @@ def main():
             if not dataset_name:
                 logger.error("--dataset parameter is required for --update-readme")
                 sys.exit(1)
+            assert dataset_name is not None
             parser.update_readme(dataset_name)
         
         i += 1
