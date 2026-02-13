@@ -1,7 +1,7 @@
-match (n:DatabaseObject{isChimeric:false}) return n;
-match (n:DatabaseObject{isChimeric:true}) return n;
-match (b)-->(a:Pathway) return a;
-match (c)-->(b)-->(a:Pathway) return a, c;
-match (c)-->(b)-->(a:Pathway) return b;
-match (c)-->(b)-->(a:Pathway) return c;
-match (c)-->(b)-->(a:Pathway) return a;
+MATCH (n:DatabaseObject{isChimeric:false}) RETURN n;
+MATCH (n:DatabaseObject{isChimeric:true}) RETURN n;
+MATCH (b)-->(a:Pathway) RETURN a;
+MATCH (c)-->(b)-->(a:Pathway) RETURN a, c;
+MATCH (c)-->(b)-->(a:Pathway) RETURN b;
+MATCH (c)-->(b)-->(a:Pathway) RETURN c;
+MATCH (c)-->(b)-->(a:Pathway) RETURN a;
