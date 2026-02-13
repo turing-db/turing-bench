@@ -11,3 +11,6 @@ turingdb.out/
 install
 output.cypher
 dumps
+
+# generated benchmark reports
+reports
