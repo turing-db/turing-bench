@@ -6,6 +6,16 @@ shopt -s expand_aliases
 GIT_ROOT="$(git rev-parse --show-toplevel)"
 source "$GIT_ROOT/env.sh"
 
+UPDATE_README=true
+
+# Parse flags
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-readme) UPDATE_README=false; shift ;;
+        *) break ;;
+    esac
+done
+
 DATASET=${1-reactome}
 QUERY_FILE=${2-queries_$DATASET.cypher}
 QUERY_FILE_PATH="$QUERIES_DIR/$DATASET/$QUERY_FILE"
@@ -51,6 +61,10 @@ bench memgraph stop
 
 } 2>&1 | tee "$REPORT_FILE"
 
-echo "- Generating summary report"
-uv run --directory "$GIT_ROOT" python "$GIT_ROOT/report_summary/parse_benchmark_report.py" \
-    "$REPORT_FILE" --dataset "$DATASET" --update-readme
+if [ "$UPDATE_README" = true ]; then
+    echo "- Generating summary report and updating README"
+    uv run --directory "$GIT_ROOT" python "$GIT_ROOT/report_summary/parse_benchmark_report.py" \
+        "$REPORT_FILE" --dataset "$DATASET" --update-readme
+else
+    echo "- Report saved to $REPORT_FILE (README not updated)"
+fi
