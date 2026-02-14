@@ -257,14 +257,28 @@ class ReportGenerator:
         return "\n".join(lines)
 
     def _build_software_versions(self) -> str:
-        """Build software versions table by detecting installed DB versions."""
-        versions = _collect_software_versions()
+        """Build software versions tables for engines and client tools."""
+        all_versions = _collect_software_versions()
+        engines = all_versions["engines"]
+        clients = all_versions["clients"]
+
         lines = [
+            "**Database Engines**",
+            "",
             "| Database  | Version                 |",
             "|-----------|-------------------------|",
         ]
-        for db, version in versions.items():
-            lines.append(f"| {db:<9} | {version:<23} |")
+        for name, version in engines.items():
+            lines.append(f"| {name:<9} | {version:<23} |")
+
+        lines.append("")
+        lines.append("**Client & Tools**")
+        lines.append("")
+        lines.append("| Component              | Version                 |")
+        lines.append("|------------------------|-------------------------|")
+        for name, version in clients.items():
+            lines.append(f"| {name:<22} | {version:<23} |")
+
         return "\n".join(lines)
 
     def _build_markdown_table(self, rows: List[Dict[str, str]]) -> str:
@@ -561,15 +575,26 @@ def _collect_machine_specs() -> Dict[str, str]:
     return specs
 
 
-def _collect_software_versions() -> Dict[str, str]:
-    """Detect installed versions of TuringDB, Neo4j, and Memgraph."""
-    versions: Dict[str, str] = {}
+def _collect_software_versions() -> Dict[str, Dict[str, str]]:
+    """Detect installed versions of database engines, SDKs, and tools."""
+    engines: Dict[str, str] = {}
+    clients: Dict[str, str] = {}
 
-    # TuringDB: from installed Python package
+    # --- Database engines ---
+
+    # TuringDB engine: via CLI
     try:
-        versions["TuringDB"] = importlib.metadata.version("turingdb")
-    except importlib.metadata.PackageNotFoundError:
-        versions["TuringDB"] = "unknown"
+        result = subprocess.run(
+            ["uv", "run", "turingdb", "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        output = (result.stdout + result.stderr).strip()
+        match = re.search(r"([\d.]+)", output)
+        engines["TuringDB"] = match.group(1) if match else output or "unknown"
+    except FileNotFoundError:
+        engines["TuringDB"] = "unknown"
 
     # Neo4j: parse version from pom.xml (neo4j-admin --version needs Java 17+)
     try:
@@ -580,16 +605,15 @@ def _collect_software_versions() -> Dict[str, str]:
             ns = {"m": "http://maven.apache.org/POM/4.0.0"}
             version_el = root.find("m:version", ns)
             if version_el is None:
-                # Try without namespace
                 version_el = root.find("version")
             if version_el is not None and version_el.text:
-                versions["Neo4j"] = version_el.text
+                engines["Neo4j"] = version_el.text
             else:
-                versions["Neo4j"] = "unknown"
+                engines["Neo4j"] = "unknown"
         else:
-            versions["Neo4j"] = "unknown"
+            engines["Neo4j"] = "unknown"
     except ET.ParseError:
-        versions["Neo4j"] = "unknown"
+        engines["Neo4j"] = "unknown"
 
     # Memgraph: from binary --version flag
     try:
@@ -602,14 +626,49 @@ def _collect_software_versions() -> Dict[str, str]:
         )
         output = result.stdout + result.stderr
         match = re.search(r"memgraph version ([\d.]+)", output, re.IGNORECASE)
-        if match:
-            versions["Memgraph"] = match.group(1)
-        else:
-            versions["Memgraph"] = "unknown"
+        engines["Memgraph"] = match.group(1) if match else "unknown"
     except FileNotFoundError:
-        versions["Memgraph"] = "unknown"
+        engines["Memgraph"] = "unknown"
 
-    return versions
+    # --- Client SDKs & tools ---
+
+    # Python version
+    try:
+        result = subprocess.run(
+            ["python3", "--version"], capture_output=True, text=True, check=False
+        )
+        match = re.search(r"([\d.]+)", result.stdout)
+        clients["Python"] = match.group(1) if match else "unknown"
+    except FileNotFoundError:
+        clients["Python"] = "unknown"
+
+    # turingdb Python SDK
+    try:
+        clients["turingdb (Python SDK)"] = importlib.metadata.version("turingdb")
+    except importlib.metadata.PackageNotFoundError:
+        clients["turingdb (Python SDK)"] = "unknown"
+
+    # neo4j Python driver (used for both Neo4j and Memgraph)
+    try:
+        clients["neo4j (Python driver)"] = importlib.metadata.version("neo4j")
+    except importlib.metadata.PackageNotFoundError:
+        clients["neo4j (Python driver)"] = "unknown"
+
+    # mgconsole
+    try:
+        mgconsole_bin = Path("install/memgraph/usr/bin/mgconsole")
+        result = subprocess.run(
+            [str(mgconsole_bin), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        match = re.search(r"([\d.]+)", result.stdout)
+        clients["mgconsole"] = match.group(1) if match else "unknown"
+    except FileNotFoundError:
+        clients["mgconsole"] = "unknown"
+
+    return {"engines": engines, "clients": clients}
 
 
 def main() -> None:
