@@ -3,11 +3,14 @@
 
 import argparse
 import datetime
+import importlib.metadata
 import logging
 import re
 import statistics
-from pathlib import Path
+import subprocess
+import xml.etree.ElementTree as ET
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Dict, List
 
 from report_summary.parse_benchmark_report import BenchmarkReportParser
@@ -253,6 +256,17 @@ class ReportGenerator:
             lines.append(f"| {key:<8} | {value:<24} |")
         return "\n".join(lines)
 
+    def _build_software_versions(self) -> str:
+        """Build software versions table by detecting installed DB versions."""
+        versions = _collect_software_versions()
+        lines = [
+            "| Database  | Version                 |",
+            "|-----------|-------------------------|",
+        ]
+        for db, version in versions.items():
+            lines.append(f"| {db:<9} | {version:<23} |")
+        return "\n".join(lines)
+
     def _build_markdown_table(self, rows: List[Dict[str, str]]) -> str:
         """Build a markdown table from summary rows."""
         if not rows:
@@ -455,6 +469,9 @@ class ReportGenerator:
             content, "HARDWARE_TABLE", self._build_hardware_table()
         )
         content = self._replace_section(
+            content, "SOFTWARE_VERSIONS", self._build_software_versions()
+        )
+        content = self._replace_section(
             content, "RESULTS_OVERVIEW", self._build_results_overview()
         )
         content = self._replace_section(
@@ -483,7 +500,6 @@ def _collect_machine_specs() -> Dict[str, str]:
     """Collect machine hardware specs."""
     import os
     import platform
-    import subprocess
 
     specs: Dict[str, str] = {}
 
@@ -543,6 +559,57 @@ def _collect_machine_specs() -> Dict[str, str]:
         specs["OS"] = f"{platform.system()} {platform.release()}"
 
     return specs
+
+
+def _collect_software_versions() -> Dict[str, str]:
+    """Detect installed versions of TuringDB, Neo4j, and Memgraph."""
+    versions: Dict[str, str] = {}
+
+    # TuringDB: from installed Python package
+    try:
+        versions["TuringDB"] = importlib.metadata.version("turingdb")
+    except importlib.metadata.PackageNotFoundError:
+        versions["TuringDB"] = "unknown"
+
+    # Neo4j: parse version from pom.xml (neo4j-admin --version needs Java 17+)
+    try:
+        pom_path = Path("install/neo4j/pom.xml")
+        if pom_path.exists():
+            tree = ET.parse(pom_path)
+            root = tree.getroot()
+            ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+            version_el = root.find("m:version", ns)
+            if version_el is None:
+                # Try without namespace
+                version_el = root.find("version")
+            if version_el is not None and version_el.text:
+                versions["Neo4j"] = version_el.text
+            else:
+                versions["Neo4j"] = "unknown"
+        else:
+            versions["Neo4j"] = "unknown"
+    except ET.ParseError:
+        versions["Neo4j"] = "unknown"
+
+    # Memgraph: from binary --version flag
+    try:
+        memgraph_bin = Path("install/memgraph/usr/lib/memgraph/memgraph")
+        result = subprocess.run(
+            [str(memgraph_bin), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        output = result.stdout + result.stderr
+        match = re.search(r"memgraph version ([\d.]+)", output, re.IGNORECASE)
+        if match:
+            versions["Memgraph"] = match.group(1)
+        else:
+            versions["Memgraph"] = "unknown"
+    except FileNotFoundError:
+        versions["Memgraph"] = "unknown"
+
+    return versions
 
 
 def main() -> None:

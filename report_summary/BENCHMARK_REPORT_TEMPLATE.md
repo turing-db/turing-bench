@@ -34,11 +34,13 @@ TuringDB is a column-oriented, in-memory graph database engine designed for anal
 
 ### Software Versions
 
+<!-- SOFTWARE_VERSIONS -->
 | Database  | Version                 |
 |-----------|-------------------------|
 | TuringDB  | {version}               |
-| Neo4j     | {version, e.g., 5.x community} |
+| Neo4j     | {version}               |
 | Memgraph  | {version}               |
+<!-- /SOFTWARE_VERSIONS -->
 
 All databases were run locally on the same machine, one at a time, to avoid resource contention. Neo4j and Memgraph were imported with their native indexes and constraints from the original dump. Memgraph was run in in-memory analytical mode (`--storage-mode=IN_MEMORY_ANALYTICAL`). No additional engine-specific tuning was applied beyond what the import pipeline provides.
 
