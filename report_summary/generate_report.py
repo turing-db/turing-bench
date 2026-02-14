@@ -2,6 +2,7 @@
 """Generate a comprehensive benchmark report from individual dataset reports."""
 
 import argparse
+import datetime
 import logging
 import re
 import statistics
@@ -438,6 +439,9 @@ class ReportGenerator:
             return ""
 
         content = self.template_path.read_text()
+
+        # Set date
+        content = content.replace("YYYY-MM-DD", datetime.date.today().isoformat())
 
         # Compute aggregate stats
         stats = self._compute_aggregate_stats()
