@@ -1,7 +1,7 @@
 # TuringDB Benchmark Report
 
 > **Date:** YYYY-MM-DD
-> **Author(s):** {author}
+> **Author(s):** TuringDB team
 
 ## Executive Summary
 
