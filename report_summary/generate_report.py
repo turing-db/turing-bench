@@ -4,6 +4,7 @@
 import argparse
 import datetime
 import importlib.metadata
+import json
 import logging
 import re
 import statistics
@@ -131,9 +132,14 @@ def classify_query(query: str) -> str:
 
 
 class ReportGenerator:
-    def __init__(self, reports_dir: Path, template_path: Path):
+    def __init__(
+        self, reports_dir: Path, template_path: Path, dumps_dir: Path | None = None
+    ):
         self.reports_dir = reports_dir
         self.template_path = template_path
+        self.dumps_dir = (
+            dumps_dir if dumps_dir is not None else reports_dir.parent / "dumps"
+        )
         self.parsers: dict[str, BenchmarkReportParser] = {}
         self.summaries: dict[str, list[dict[str, str]]] = {}
 
@@ -280,6 +286,89 @@ class ReportGenerator:
             lines.append(f"| {name:<22} | {version:<23} |")
 
         return "\n".join(lines)
+
+    def _parse_jsonl_stats(self, jsonl_path: Path) -> dict[str, Any]:
+        """Parse a JSONL file line-by-line and collect dataset statistics."""
+        total_nodes = 0
+        total_relationships = 0
+        node_labels: dict[str, int] = {}
+        rel_types: dict[str, int] = {}
+
+        with open(jsonl_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                record_type = record.get("type")
+                if record_type == "node":
+                    total_nodes += 1
+                    for label in record.get("labels", []):
+                        node_labels[label] = node_labels.get(label, 0) + 1
+                elif record_type == "relationship":
+                    total_relationships += 1
+                    rel_label = record.get("label", "UNKNOWN")
+                    rel_types[rel_label] = rel_types.get(rel_label, 0) + 1
+
+        return {
+            "total_nodes": total_nodes,
+            "total_relationships": total_relationships,
+            "node_labels": node_labels,
+            "rel_types": rel_types,
+        }
+
+    def _build_dataset_info(self) -> str:
+        """Build dataset statistics section from JSONL files."""
+        sections = []
+
+        for dataset in sorted(self.summaries):
+            jsonl_path = self.dumps_dir / f"{dataset}.jsonl"
+            if not jsonl_path.exists():
+                logger.warning(f"JSONL file not found: {jsonl_path}")
+                continue
+
+            stats = self._parse_jsonl_stats(jsonl_path)
+            num_queries = len(self.summaries[dataset])
+
+            lines = [f"### {dataset.capitalize()}\n"]
+
+            # Summary table
+            lines.append("| Metric | Count |")
+            lines.append("|--------|------:|")
+            lines.append(f"| Nodes | {stats['total_nodes']:,} |")
+            lines.append(f"| Relationships | {stats['total_relationships']:,} |")
+            lines.append(f"| Node Labels | {len(stats['node_labels'])} |")
+            lines.append(f"| Relationship Types | {len(stats['rel_types'])} |")
+            lines.append(f"| Benchmark Queries | {num_queries} |")
+            lines.append("")
+
+            # Node labels table (sorted by count descending)
+            if stats["node_labels"]:
+                sorted_labels = sorted(
+                    stats["node_labels"].items(), key=lambda x: x[1], reverse=True
+                )
+                lines.append("**Node Labels**\n")
+                lines.append("| Label | Count |")
+                lines.append("|-------|------:|")
+                for label, count in sorted_labels:
+                    lines.append(f"| {label} | {count:,} |")
+                lines.append("")
+
+            # Relationship types table (sorted by count descending)
+            if stats["rel_types"]:
+                sorted_rels = sorted(
+                    stats["rel_types"].items(), key=lambda x: x[1], reverse=True
+                )
+                lines.append("**Relationship Types**\n")
+                lines.append("| Type | Count |")
+                lines.append("|------|------:|")
+                for rel_type, count in sorted_rels:
+                    lines.append(f"| {rel_type} | {count:,} |")
+                lines.append("")
+
+            sections.append("\n".join(lines))
+
+        return "\n".join(sections)
 
     def _build_markdown_table(self, rows: list[dict[str, str]]) -> str:
         """Build a markdown table from summary rows."""
@@ -484,6 +573,9 @@ class ReportGenerator:
         )
         content = self._replace_section(
             content, "SOFTWARE_VERSIONS", self._build_software_versions()
+        )
+        content = self._replace_section(
+            content, "DATASET_SECTION", self._build_dataset_info()
         )
         content = self._replace_section(
             content, "RESULTS_OVERVIEW", self._build_results_overview()
@@ -694,13 +786,19 @@ def main() -> None:
         default=Path("reports/benchmark_report.md"),
         help="Output file path (default: reports/benchmark_report.md)",
     )
+    parser.add_argument(
+        "--dumps-dir",
+        type=Path,
+        default=None,
+        help="Directory containing {dataset}.jsonl files (default: <reports-dir>/../dumps)",
+    )
     args = parser.parse_args()
 
     if not args.template.exists():
         logger.error(f"Template file not found: {args.template}")
         return
 
-    generator = ReportGenerator(args.reports_dir, args.template)
+    generator = ReportGenerator(args.reports_dir, args.template, args.dumps_dir)
     generator.save(args.output)
 
 
