@@ -11,7 +11,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from report_summary.parse_benchmark_report import BenchmarkReportParser
 
@@ -134,10 +134,10 @@ class ReportGenerator:
     def __init__(self, reports_dir: Path, template_path: Path):
         self.reports_dir = reports_dir
         self.template_path = template_path
-        self.parsers: Dict[str, BenchmarkReportParser] = {}
-        self.summaries: Dict[str, List[Dict[str, str]]] = {}
+        self.parsers: dict[str, BenchmarkReportParser] = {}
+        self.summaries: dict[str, list[dict[str, str]]] = {}
 
-    def _discover_reports(self) -> Dict[str, Path]:
+    def _discover_reports(self) -> dict[str, Path]:
         """Find {dataset}_benchmark_report.txt files in reports_dir."""
         reports = {}
         for path in sorted(self.reports_dir.glob("*_benchmark_report.txt")):
@@ -170,16 +170,16 @@ class ReportGenerator:
                 logger.warning(f"Failed to parse {dataset}: {e}")
 
     def _group_by_category(
-        self, summary: List[Dict[str, str]]
-    ) -> Dict[str, List[Dict[str, str]]]:
+        self, summary: list[dict[str, str]]
+    ) -> dict[str, list[dict[str, str]]]:
         """Group summary rows by query category."""
-        groups: Dict[str, List[Dict[str, str]]] = {}
+        groups: dict[str, list[dict[str, str]]] = {}
         for row in summary:
             category = classify_query(row["Query"])
             groups.setdefault(category, []).append(row)
         return groups
 
-    def _compute_aggregate_stats(self) -> Dict[str, Any]:
+    def _compute_aggregate_stats(self) -> dict[str, Any]:
         """Compute aggregate speedup stats across all datasets."""
         neo4j_speedups: list[float] = []
         memgraph_speedups: list[float] = []
@@ -195,7 +195,7 @@ class ReportGenerator:
                     if match:
                         target.append(float(match.group(1)))
 
-        def _stats(values: list[float]) -> Dict[str, Any]:
+        def _stats(values: list[float]) -> dict[str, Any]:
             if not values:
                 return {
                     "avg": 0,
@@ -223,7 +223,7 @@ class ReportGenerator:
             "total_datasets": len(self.summaries),
         }
 
-    def _find_competitor_wins(self) -> List[Dict[str, str]]:
+    def _find_competitor_wins(self) -> list[dict[str, str]]:
         """Find queries where a competitor is faster (speedup < 1.0)."""
         losses = []
         for dataset, summary in self.summaries.items():
@@ -281,7 +281,7 @@ class ReportGenerator:
 
         return "\n".join(lines)
 
-    def _build_markdown_table(self, rows: List[Dict[str, str]]) -> str:
+    def _build_markdown_table(self, rows: list[dict[str, str]]) -> str:
         """Build a markdown table from summary rows."""
         if not rows:
             return "*No queries in this category.*\n"
@@ -323,7 +323,7 @@ class ReportGenerator:
     def _build_results_by_category(self) -> str:
         """Build per-category results with tables, preserving narrative text."""
         # Collect all queries across all datasets, grouped by category
-        all_by_category: Dict[str, Dict[str, List[Dict[str, str]]]] = {}
+        all_by_category: dict[str, dict[str, list[dict[str, str]]]] = {}
         for dataset in sorted(self.summaries):
             groups = self._group_by_category(self.summaries[dataset])
             for category, rows in groups.items():
@@ -360,7 +360,7 @@ class ReportGenerator:
 
         return "\n".join(sections)
 
-    def _build_executive_summary(self, stats: Dict[str, Any]) -> str:
+    def _build_executive_summary(self, stats: dict[str, Any]) -> str:
         """Build the executive summary key findings."""
         neo4j = stats["neo4j"]
         memgraph = stats["memgraph"]
@@ -390,7 +390,7 @@ class ReportGenerator:
 
         return "\n".join(lines)
 
-    def _build_competitor_wins(self, losses: List[Dict[str, str]]) -> str:
+    def _build_competitor_wins(self, losses: list[dict[str, str]]) -> str:
         """Build the section listing queries where competitors win."""
         if not losses:
             return "No queries where competitors outperform TuringDB were found in the benchmark.\n"
@@ -510,12 +510,12 @@ class ReportGenerator:
         logger.info(f"Report saved to {output_path}")
 
 
-def _collect_machine_specs() -> Dict[str, str]:
+def _collect_machine_specs() -> dict[str, str]:
     """Collect machine hardware specs."""
     import os
     import platform
 
-    specs: Dict[str, str] = {}
+    specs: dict[str, str] = {}
 
     # CPU
     try:
@@ -575,10 +575,10 @@ def _collect_machine_specs() -> Dict[str, str]:
     return specs
 
 
-def _collect_software_versions() -> Dict[str, Dict[str, str]]:
+def _collect_software_versions() -> dict[str, dict[str, str]]:
     """Detect installed versions of database engines, SDKs, and tools."""
-    engines: Dict[str, str] = {}
-    clients: Dict[str, str] = {}
+    engines: dict[str, str] = {}
+    clients: dict[str, str] = {}
 
     # --- Database engines ---
 
