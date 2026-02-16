@@ -71,7 +71,7 @@ fi
 
 if [ "$GENERATE_REPORT" = true ]; then
     echo "- Generating benchmark report"
-    uv run --directory "$GIT_ROOT" python -m report_summary.generate_benchmark_report \
+    uv run --directory "$GIT_ROOT" python "$GIT_ROOT/report_summary/generate_benchmark_report.py" \
         --reports-dir "$REPORT_DIR" -o "$REPORT_DIR/benchmark_report.md"
 fi
 
