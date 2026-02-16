@@ -11,9 +11,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Running benchmarks
 ```bash
 # Full benchmark pipeline: stops all DBs, loads dataset, benchmarks all 3 engines,
-# saves report to reports/, and updates the README summary table
+# saves raw output to reports/, and updates the README summary table
 ./run.sh reactome                      # default dataset
 ./run.sh poledb queries_poledb.cypher  # specify dataset + query file
+./run.sh --report reactome             # also generate full benchmark report (.md)
+./run.sh --no-readme reactome          # skip README update
 
 # Run individual benchmarks
 uv run python -m turingbench turingdb --query-file sample_queries/reactome/queries_reactome.cypher --database=reactome
@@ -33,11 +35,14 @@ bench all stop
 
 ### Report generation
 ```bash
-# Parse a benchmark report and update README with summary table
-uv run python report_summary/parse_benchmark_report.py <report_file> --dataset <name> --update-readme
+# Parse raw benchmark output and update README with summary table
+uv run python report_summary/parse_raw_benchmark.py <report_file> --dataset <name> --update-readme
 
 # Other output formats
-uv run python report_summary/parse_benchmark_report.py <report_file> --dataset <name> --print --csv --markdown
+uv run python report_summary/parse_raw_benchmark.py <report_file> --dataset <name> --print --csv --markdown
+
+# Generate full benchmark report from all raw benchmarks
+uv run python -m report_summary.generate_benchmark_report --reports-dir reports/ -o reports/benchmark_report.md
 ```
 
 ### Linting and type checking
@@ -55,8 +60,11 @@ uv run ty check .       # type check
 - **`turingdb_driver.py`** — TuringDB driver using `turingdb` Python client against `http://localhost:6666`.
 - **`__main__.py`** — CLI with three subcommands: `turingdb`, `neo4j`, `memgraph`.
 
-### Report summary (`report_summary/parse_benchmark_report.py`)
-`BenchmarkReportParser` parses the raw benchmark output (three per-engine tables), extracts mean runtimes, computes TuringDB speedup ratios vs Neo4j and Memgraph, and can output as CSV, text, markdown, or directly update the README. Also collects machine specs (CPU, RAM, OS, storage) to include in each benchmark subsection. Called automatically by `run.sh` at the end of a benchmark run.
+### Raw benchmark parser (`report_summary/parse_raw_benchmark.py`)
+`BenchmarkReportParser` parses raw benchmark output (`{dataset}_raw_benchmark.txt` — per-engine timing tables), extracts mean runtimes, computes TuringDB speedup ratios vs Neo4j and Memgraph, and can output as CSV, text, markdown, or directly update the README. Also collects machine specs (CPU, RAM, OS, storage) to include in each benchmark subsection. Called automatically by `run.sh` at the end of a benchmark run.
+
+### Benchmark report generator (`report_summary/generate_benchmark_report.py`)
+`ReportGenerator` combines all raw benchmark results into a comprehensive markdown report using `BENCHMARK_REPORT_TEMPLATE.md`. Auto-populates dataset statistics from JSONL files, hardware/software info, results tables, executive summary, and query appendix. Invoked via `run.sh --report` or standalone.
 
 ### Server orchestration (`scripts/manage_servers.py`)
 `ServerManager` handles process lifecycle with PID file tracking in `scripts/.cache/`. Each database has a different health check strategy: Neo4j uses process grep, Memgraph uses `mgconsole` test query, TuringDB uses Python client warmup. Aliased as `bench` via `env.sh`.
