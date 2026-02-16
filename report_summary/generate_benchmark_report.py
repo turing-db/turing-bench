@@ -14,7 +14,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from report_summary.parse_benchmark_report import BenchmarkReportParser
+from report_summary.parse_raw_benchmark import BenchmarkReportParser
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -144,10 +144,10 @@ class ReportGenerator:
         self.summaries: dict[str, list[dict[str, str]]] = {}
 
     def _discover_reports(self) -> dict[str, Path]:
-        """Find {dataset}_benchmark_report.txt files in reports_dir."""
+        """Find {dataset}_raw_benchmark.txt files in reports_dir."""
         reports = {}
-        for path in sorted(self.reports_dir.glob("*_benchmark_report.txt")):
-            dataset = path.stem.replace("_benchmark_report", "")
+        for path in sorted(self.reports_dir.glob("*_raw_benchmark.txt")):
+            dataset = path.stem.replace("_raw_benchmark", "")
             reports[dataset] = path
         if not reports:
             logger.warning(f"No benchmark reports found in {self.reports_dir}")
@@ -771,7 +771,7 @@ def main() -> None:
         "--reports-dir",
         type=Path,
         default=Path("reports"),
-        help="Directory containing {dataset}_benchmark_report.txt files (default: reports/)",
+        help="Directory containing {dataset}_raw_benchmark.txt files (default: reports/)",
     )
     parser.add_argument(
         "--template",
