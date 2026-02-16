@@ -50,6 +50,10 @@ TuringDB is queried over **HTTP** via its Python client, while Neo4j and Memgrap
 
 This section describes the datasets used in the benchmark. Each dataset was imported into all three engines using the same pipeline (see [turing-bench](https://github.com/turing-db/turing-bench) for reproduction steps). The data is identical across all three databases.
 
+<!-- DATASET_SECTION -->
+{auto-populated: per-dataset statistics}
+<!-- /DATASET_SECTION -->
+
 ---
 
 ## 3. Methodology
