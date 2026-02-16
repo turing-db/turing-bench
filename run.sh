@@ -7,11 +7,13 @@ GIT_ROOT="$(git rev-parse --show-toplevel)"
 source "$GIT_ROOT/env.sh"
 
 UPDATE_README=true
+GENERATE_REPORT=false
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
     case $1 in
         --no-readme) UPDATE_README=false; shift ;;
+        --report) GENERATE_REPORT=true; shift ;;
         *) break ;;
     esac
 done
@@ -30,9 +32,9 @@ alias uvrun="uv run --directory $GIT_ROOT python -m turingbench"
 
 REPORT_DIR="$GIT_ROOT/reports"
 mkdir -p "$REPORT_DIR"
-REPORT_FILE="$REPORT_DIR/${DATASET}_benchmark_report.txt"
+RAW_FILE="$REPORT_DIR/${DATASET}_raw_benchmark.txt"
 
-# Run benchmarks and capture output to report file (while still printing to stdout)
+# Run benchmarks and capture output to raw file (while still printing to stdout)
 {
 
 echo "- Stopping all databases"
@@ -59,12 +61,20 @@ uvrun memgraph --query-file $QUERY_FILE_PATH --database=memgraph --url=bolt://lo
 bench memgraph stop
 
 
-} 2>&1 | tee "$REPORT_FILE"
+} 2>&1 | tee "$RAW_FILE"
 
 if [ "$UPDATE_README" = true ]; then
-    echo "- Generating summary report and updating README"
-    uv run --directory "$GIT_ROOT" python "$GIT_ROOT/report_summary/parse_benchmark_report.py" \
-        "$REPORT_FILE" --dataset "$DATASET" --update-readme
-else
-    echo "- Report saved to $REPORT_FILE (README not updated)"
+    echo "- Updating README summary table"
+    uv run --directory "$GIT_ROOT" python "$GIT_ROOT/report_summary/parse_raw_benchmark.py" \
+        "$RAW_FILE" --dataset "$DATASET" --update-readme
+fi
+
+if [ "$GENERATE_REPORT" = true ]; then
+    echo "- Generating benchmark report"
+    uv run --directory "$GIT_ROOT" python -m report_summary.generate_benchmark_report \
+        --reports-dir "$REPORT_DIR" -o "$REPORT_DIR/benchmark_report.md"
+fi
+
+if [ "$UPDATE_README" = false ] && [ "$GENERATE_REPORT" = false ]; then
+    echo "- Raw benchmark saved to $RAW_FILE"
 fi
