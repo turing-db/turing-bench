@@ -347,24 +347,32 @@ class ReportGenerator:
                 sorted_labels = sorted(
                     stats["node_labels"].items(), key=lambda x: x[1], reverse=True
                 )
-                lines.append("**Node Labels**\n")
+                lines.append("<details>")
+                lines.append(
+                    f"<summary><b>Node Labels ({len(sorted_labels)})</b></summary>\n"
+                )
                 lines.append("| Label | Count |")
                 lines.append("|-------|------:|")
                 for label, count in sorted_labels:
                     lines.append(f"| {label} | {count:,} |")
                 lines.append("")
+                lines.append("</details>\n")
 
             # Relationship types table (sorted by count descending)
             if stats["rel_types"]:
                 sorted_rels = sorted(
                     stats["rel_types"].items(), key=lambda x: x[1], reverse=True
                 )
-                lines.append("**Relationship Types**\n")
+                lines.append("<details>")
+                lines.append(
+                    f"<summary><b>Relationship Types ({len(sorted_rels)})</b></summary>\n"
+                )
                 lines.append("| Type | Count |")
                 lines.append("|------|------:|")
                 for rel_type, count in sorted_rels:
                     lines.append(f"| {rel_type} | {count:,} |")
                 lines.append("")
+                lines.append("</details>\n")
 
             sections.append("\n".join(lines))
 
