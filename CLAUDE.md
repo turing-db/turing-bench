@@ -42,7 +42,7 @@ uv run python report_summary/parse_raw_benchmark.py <report_file> --dataset <nam
 uv run python report_summary/parse_raw_benchmark.py <report_file> --dataset <name> --print --csv --markdown
 
 # Generate full benchmark report from all raw benchmarks
-uv run python -m report_summary.generate_benchmark_report --reports-dir reports/ -o reports/benchmark_report.md
+uv run python report_summary/generate_benchmark_report.py --reports-dir reports/ -o reports/benchmark_report.md
 ```
 
 ### Linting and type checking
