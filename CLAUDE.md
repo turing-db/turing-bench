@@ -57,7 +57,7 @@ uv run ty check .       # type check
 ### Benchmarking framework (`turingbench/`)
 - **`abstract_driver.py`** — `AbstractDriver` base class using Template Method pattern. Subclasses implement `execute_query()` and `close()`. The base handles timing (nanosecond precision via `perf_counter_ns`), multi-run execution, and result presentation (mean/min/max/median/throughput).
 - **`neo4j_driver.py`** — Shared driver for both Neo4j (port 7687) and Memgraph (port 7688) since both speak the Bolt protocol.
-- **`turingdb_driver.py`** — TuringDB driver using `turingdb` Python client against `http://localhost:6666`.
+- **`turingdb_driver.py`** — TuringDB driver using `turingdb` Python client against `http://localhost:6667`.
 - **`__main__.py`** — CLI with three subcommands: `turingdb`, `neo4j`, `memgraph`.
 
 ### Raw benchmark parser (`report_summary/parse_raw_benchmark.py`)
