@@ -10,7 +10,7 @@ turingdb.out/
 # neo4j, memgraph, turingdb
 install
 output.cypher
-dumps
+dumps*
 
 # generated benchmark reports
 reports

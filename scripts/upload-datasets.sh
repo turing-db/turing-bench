@@ -6,12 +6,19 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 source "$REPO_ROOT/env.sh"
 
-# Reactome
-aws s3 sync --profile turingdb_intern $REPO_ROOT/dumps/reactome.turingdb s3://turingdb-external/bench-datasets/reactome.turingdbg
-aws s3 sync --profile turingdb_intern $REPO_ROOT/dumps/reactome.memgraph s3://turingdb-external/bench-datasets/reactome.memgraphg
-aws s3 sync --profile turingdb_intern $REPO_ROOT/dumps/reactome.neo4j s3://turingdb-external/bench-datasets/reactome.neo4jg
+function cleanup_memgraph() {
+    rm -r "$REPO_ROOT/dumps/$1.memgraph/databases/memgraph/replication"
+    rm -r "$REPO_ROOT/dumps/$1.memgraph/databases/memgraph/streams"
+    rm -r "$REPO_ROOT/dumps/$1.memgraph/databases/memgraph/triggers"
+    rm -r "$REPO_ROOT/dumps/$1.memgraph/databases/memgraph/snapshots"
+}
 
-# PoleDB
-aws s3 sync --profile turingdb_intern $REPO_ROOT/dumps/poledb.turingdb s3://turingdb-external/bench-datasets/poledb.turingdbg
-aws s3 sync --profile turingdb_intern $REPO_ROOT/dumps/poledb.memgraph s3://turingdb-external/bench-datasets/poledb.memgraphg
-aws s3 sync --profile turingdb_intern $REPO_ROOT/dumps/poledb.neo4j s3://turingdb-external/bench-datasets/poledb.neo4jg
+function upload_dataset() {
+    cleanup_memgraph "$1"
+    aws s3 sync --profile turingdb_intern "$REPO_ROOT/dumps/$1.turingdb" s3://turingdb-external/bench-datasets/"$1".turingdb
+    aws s3 sync --profile turingdb_intern "$REPO_ROOT/dumps/$1.memgraph" s3://turingdb-external/bench-datasets/"$1".memgraph
+    aws s3 sync --profile turingdb_intern "$REPO_ROOT/dumps/$1.neo4j" s3://turingdb-external/bench-datasets/"$1".neo4j
+}
+
+upload_dataset reactome
+upload_dataset poledb

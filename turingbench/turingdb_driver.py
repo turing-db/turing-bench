@@ -10,7 +10,7 @@ from turingdb import TuringDB
 
 
 class TuringDBDriver(AbstractDriver):
-    _default_url: str = "http://localhost:6666"
+    _default_url: str = "http://localhost:6667"
     _default_db: str = "default"
 
     def connect(self, url: str, database: str = "default") -> None:
@@ -48,7 +48,7 @@ class TuringDBDriver(AbstractDriver):
             "--url",
             "-u",
             default=cls._default_url,
-            help=f"Neo4j connection URL (default: {cls._default_url}",
+            help=f"TuringDB connection URL (default: {cls._default_url}",
         )
 
         parser.add_argument(

@@ -272,7 +272,7 @@ class ServerManager:
 
         while time.time() - start_time < config.start_timeout:
             try:
-                cmd = "uv run python3 -c 'import turingdb; c = turingdb.TuringDB(host=\"http://localhost:6666\"); c.warmup()'"
+                cmd = "uv run python3 -c 'import turingdb; c = turingdb.TuringDB(host=\"http://localhost:6667\"); c.warmup()'"
                 res = subprocess.run(cmd, shell=True, capture_output=True)
                 if res.returncode == 0:
                     return True
@@ -329,8 +329,8 @@ class ServerManager:
 SERVERS = {
     "turingdb": ServerConfig(
         name="TuringDB",
-        start_command="uv run turingdb -demon",
-        stop_command="pkill -15 turingdb",
+        start_command="uv run turingdb -demon -p 6667",
+        stop_command="pkill -9 turingdb",
     ),
     "neo4j": ServerConfig(
         name="Neo4j",
