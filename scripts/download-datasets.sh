@@ -6,28 +6,24 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 source "$REPO_ROOT/env.sh"
 
-# Reactome
-if [ ! -d "$REPO_ROOT/dumps/reactome.turingdb" ]; then
-    aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/reactome.turingdb $REPO_ROOT/dumps/reactome.turingdb 
-fi
+function download_dataset() {
+    local dataset=$1
+    if [ ! -d "$REPO_ROOT/dumps/$dataset.turingdb" ]; then
+        aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/$dataset.turingdb $REPO_ROOT/dumps/$dataset.turingdb
+    fi
 
-if [ ! -d "$REPO_ROOT/dumps/reactome.memgraph" ]; then
-    aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/reactome.memgraph $REPO_ROOT/dumps/reactome.memgraph
-fi
+    if [ ! -d "$REPO_ROOT/dumps/$dataset.memgraph" ]; then
+        aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/$dataset.memgraph $REPO_ROOT/dumps/$dataset.memgraph
+    fi
 
-if [ ! -d "$REPO_ROOT/dumps/reactome.neo4j" ]; then
-    aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/reactome.neo4j $REPO_ROOT/dumps/reactome.neo4j
-fi
+    if [ ! -d "$REPO_ROOT/dumps/$dataset.neo4j" ]; then
+        aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/$dataset.neo4j $REPO_ROOT/dumps/$dataset.neo4j
+    fi
 
-# PoleDB
-if [ ! -d "$REPO_ROOT/dumps/poledb.turingdb" ]; then
-    aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/poledb.turingdb $REPO_ROOT/dumps/poledb.turingdb
-fi
+    if [ ! -f "$REPO_ROOT/dumps/$dataset.jsonl" ]; then
+        aws s3 cp --profile turingdb_intern s3://turingdb-external/bench-datasets/$dataset.jsonl $REPO_ROOT/dumps/$dataset.jsonl
+    fi
+}
 
-if [ ! -d "$REPO_ROOT/dumps/poledb.memgraph" ]; then
-    aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/poledb.memgraph $REPO_ROOT/dumps/poledb.memgraph
-fi
-
-if [ ! -d "$REPO_ROOT/dumps/poledb.neo4j" ]; then
-    aws s3 sync --profile turingdb_intern s3://turingdb-external/bench-datasets/poledb.neo4j $REPO_ROOT/dumps/poledb.neo4j
-fi
+download_dataset "reactome"
+download_dataset "poledb"

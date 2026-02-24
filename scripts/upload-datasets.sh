@@ -18,6 +18,7 @@ function upload_dataset() {
     aws s3 sync --profile turingdb_intern "$REPO_ROOT/dumps/$1.turingdb" s3://turingdb-external/bench-datasets/"$1".turingdb
     aws s3 sync --profile turingdb_intern "$REPO_ROOT/dumps/$1.memgraph" s3://turingdb-external/bench-datasets/"$1".memgraph
     aws s3 sync --profile turingdb_intern "$REPO_ROOT/dumps/$1.neo4j" s3://turingdb-external/bench-datasets/"$1".neo4j
+    aws s3 cp --profile turingdb_intern "$REPO_ROOT/dumps/$1.jsonl" s3://turingdb-external/bench-datasets/"$1".jsonl
 }
 
 upload_dataset reactome
