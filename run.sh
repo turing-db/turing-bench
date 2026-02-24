@@ -45,8 +45,10 @@ bench memgraph stop || true > /dev/null
 echo "- Switching to dataset $DATASET"
 $SCRIPTS/switch-neo4j-dataset.sh $DATASET
 
+GRAPH_NAME=$(sed 's/-/_/g' <<< $DATASET)
+
 echo "- Running benchmark for 'turingdb'"
-bench turingdb start -- -turing-dir "$DUMPS/$DATASET.turingdb" -load "$DATASET"
+bench turingdb start -- -turing-dir "$DUMPS/$DATASET.turingdb" -load "$GRAPH_NAME"
 uvrun turingdb --query-file $QUERY_FILE_PATH --database=$DATASET
 bench turingdb stop
 
