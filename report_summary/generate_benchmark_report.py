@@ -14,7 +14,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from report_summary.parse_raw_benchmark import BenchmarkReportParser
+from parse_raw_benchmark import BenchmarkReportParser
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
