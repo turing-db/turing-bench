@@ -35,11 +35,11 @@ if __name__ == "__main__":
     elif args.benchmark == "neo4j":
         from turingbench.neo4j_driver import main
 
-        main(args)
+        main(args, engine="neo4j")
     elif args.benchmark == "memgraph":
         from turingbench.neo4j_driver import main
 
-        main(args)
+        main(args, engine="memgraph")
     else:
         parser.print_help()
         exit(1)

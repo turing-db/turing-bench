@@ -4,8 +4,10 @@ import argparse
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from tabulate import tabulate
+
+from .memory_sampler import MemorySampler, MemoryStats
 
 
 @dataclass
@@ -19,6 +21,7 @@ class AbstractDriver(ABC):
 
     def __init__(self):
         self.connection = None
+        self.server_pid: Optional[int] = None
 
     @abstractmethod
     def execute_query(self, query: str) -> List[Dict[str, Any]]:
@@ -148,6 +151,25 @@ class AbstractDriver(ABC):
         Main benchmark orchestration method.
         This method is generic and doesn't need to be overridden.
         """
+        sampler = None
+        if self.server_pid is not None:
+            sampler = MemorySampler(self.server_pid)
+            sampler.start()
+
         results = self.run_queries(queries, runs)
         print("Benchmark completed")
         self.present_results(results, runs)
+
+        if sampler is not None:
+            mem = sampler.stop()
+            self._print_memory_stats(mem)
+
+    @staticmethod
+    def _print_memory_stats(mem: MemoryStats) -> None:
+        baseline_mb = mem.baseline_kb / 1024
+        peak_mb = mem.peak_kb / 1024
+        delta_mb = (mem.peak_kb - mem.baseline_kb) / 1024
+        print("\nMemory usage (RSS):")
+        print(f"  • Baseline: {baseline_mb:.0f} MB")
+        print(f"  • Peak:     {peak_mb:.0f} MB")
+        print(f"  • Delta:    +{delta_mb:.0f} MB")

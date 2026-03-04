@@ -5,6 +5,7 @@ import argparse
 from typing import List, Dict, Any, LiteralString, cast
 
 from .abstract_driver import AbstractDriver
+from .memory_sampler import find_server_pid
 
 from neo4j import GraphDatabase
 
@@ -55,7 +56,7 @@ class Neo4jDriver(AbstractDriver):
         )
 
 
-def main(args: argparse.Namespace) -> None:
+def main(args: argparse.Namespace, engine: str = "neo4j") -> None:
     driver = Neo4jDriver()
 
     try:
@@ -65,6 +66,7 @@ def main(args: argparse.Namespace) -> None:
             password=args.password,
             database=args.database,
         )
+        driver.server_pid = find_server_pid(engine)
 
         # Load queries from file
         with open(args.query, "r") as f:
