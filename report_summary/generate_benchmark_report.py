@@ -399,16 +399,8 @@ class ReportGenerator:
 
         return "\n".join(sections)
 
-    def _build_markdown_table(
-        self,
-        rows: list[dict[str, str]],
-        dataset: str | None = None,
-    ) -> str:
-        """
-        Build a markdown table from summary rows.
-        If dataset is provided and self._deltas contains data for it,
-        a 'Δ TuringDB' column is appended.
-        """
+    def _build_markdown_table(self, rows: list[dict[str, str]]) -> str:
+        """Build a markdown table from summary rows."""
         if not rows:
             return "*No queries in this category.*\n"
 
@@ -422,27 +414,20 @@ class ReportGenerator:
         # Only include columns that exist in the data
         columns = [c for c in columns if any(c in row for row in rows)]
 
-        dataset_deltas = self._deltas.get(dataset, {}) if dataset else {}
-        include_delta = bool(dataset_deltas)
-        if include_delta:
-            columns.append("Δ TuringDB")
-
         lines = []
         lines.append("| Query | " + " | ".join(columns) + " |")
         lines.append("|" + "|".join(["-------"] + ["------" for _ in columns]) + "|")
         for row in rows:
             query = f"`{row['Query']}`"
-            values = [row.get(col, "-") for col in columns if col != "Δ TuringDB"]
-            if include_delta:
-                values.append(dataset_deltas.get(row["Query"], "-"))
-            lines.append(f"| {query} | {' | '.join(values)} |")
+            values = " | ".join(row.get(col, "-") for col in columns)
+            lines.append(f"| {query} | {values} |")
         return "\n".join(lines)
 
     def _build_dataset_section(self, dataset: str) -> str:
         """Build results tables for a single dataset."""
         summary = self.summaries[dataset]
         lines = [f"### {dataset.capitalize()}\n"]
-        lines.append(self._build_markdown_table(summary, dataset=dataset))
+        lines.append(self._build_markdown_table(summary))
         lines.append("")
         return "\n".join(lines)
 
@@ -486,9 +471,7 @@ class ReportGenerator:
             for dataset in sorted(datasets_data):
                 rows = datasets_data[dataset]
                 section_lines.append(f"**{dataset.capitalize()}:**\n")
-                section_lines.append(
-                    self._build_markdown_table(rows, dataset=dataset)
-                )
+                section_lines.append(self._build_markdown_table(rows))
                 section_lines.append("")
 
             sections.append("\n".join(section_lines))
