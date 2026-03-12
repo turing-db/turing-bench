@@ -32,7 +32,8 @@ alias uvrun="uv run --directory $GIT_ROOT python -m turingbench"
 
 REPORT_DIR="$GIT_ROOT/reports"
 mkdir -p "$REPORT_DIR"
-RAW_FILE="$REPORT_DIR/${DATASET}_raw_benchmark.txt"
+TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+RAW_FILE="$REPORT_DIR/${DATASET}_raw_benchmark_${TIMESTAMP}.txt"
 
 # Run benchmarks and capture output to raw file (while still printing to stdout)
 {
@@ -71,8 +72,9 @@ fi
 
 if [ "$GENERATE_REPORT" = true ]; then
     echo "- Generating benchmark report"
+    REPORT_FILE="$REPORT_DIR/benchmark_report_${DATASET}_${TIMESTAMP}.md"
     uv run --directory "$GIT_ROOT" python "$GIT_ROOT/report_summary/generate_benchmark_report.py" \
-        --reports-dir "$REPORT_DIR" -o "$REPORT_DIR/benchmark_report.md"
+        --reports-dir "$REPORT_DIR" -o "$REPORT_FILE"
 fi
 
 if [ "$UPDATE_README" = false ] && [ "$GENERATE_REPORT" = false ]; then
