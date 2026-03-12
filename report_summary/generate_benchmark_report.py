@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from parse_raw_benchmark import BenchmarkReportParser
+from benchmark_regression import BenchmarkRegression
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -142,6 +143,9 @@ class ReportGenerator:
         )
         self.parsers: dict[str, BenchmarkReportParser] = {}
         self.summaries: dict[str, list[dict[str, str]]] = {}
+        # Populated by _compute_regression_deltas() if enough history exists.
+        # Structure: {dataset: {query: delta_str}}
+        self._deltas: dict[str, dict[str, str]] = {}
 
     def _discover_reports(self) -> dict[str, Path]:
         """Find {dataset}_raw_benchmark.txt files in reports_dir."""
@@ -174,6 +178,23 @@ class ReportGenerator:
                     logger.warning(f"No summary data for {dataset}")
             except Exception as e:
                 logger.warning(f"Failed to parse {dataset}: {e}")
+
+    def _compute_regression_deltas(self, output_path: Path) -> None:
+        """
+        Run the regression module against historical compiled reports in the
+        same directory as output_path and store deltas in self._deltas.
+        Silently skips if not enough history is available.
+        """
+        if not output_path.exists():
+            # The report hasn't been written yet — nothing to compare against.
+            # Deltas will be empty for this run; they'll appear from next run onwards.
+            logger.info(
+                "No existing compiled report found for regression baseline — "
+                "skipping delta computation for this run."
+            )
+            return
+        regression = BenchmarkRegression(current_report=output_path)
+        self._deltas = regression.compute()
 
     def _group_by_category(
         self, summary: list[dict[str, str]]
@@ -378,8 +399,16 @@ class ReportGenerator:
 
         return "\n".join(sections)
 
-    def _build_markdown_table(self, rows: list[dict[str, str]]) -> str:
-        """Build a markdown table from summary rows."""
+    def _build_markdown_table(
+        self,
+        rows: list[dict[str, str]],
+        dataset: str | None = None,
+    ) -> str:
+        """
+        Build a markdown table from summary rows.
+        If dataset is provided and self._deltas contains data for it,
+        a 'Δ TuringDB' column is appended.
+        """
         if not rows:
             return "*No queries in this category.*\n"
 
@@ -393,20 +422,27 @@ class ReportGenerator:
         # Only include columns that exist in the data
         columns = [c for c in columns if any(c in row for row in rows)]
 
+        dataset_deltas = self._deltas.get(dataset, {}) if dataset else {}
+        include_delta = bool(dataset_deltas)
+        if include_delta:
+            columns.append("Δ TuringDB")
+
         lines = []
         lines.append("| Query | " + " | ".join(columns) + " |")
         lines.append("|" + "|".join(["-------"] + ["------" for _ in columns]) + "|")
         for row in rows:
             query = f"`{row['Query']}`"
-            values = " | ".join(row.get(col, "-") for col in columns)
-            lines.append(f"| {query} | {values} |")
+            values = [row.get(col, "-") for col in columns if col != "Δ TuringDB"]
+            if include_delta:
+                values.append(dataset_deltas.get(row["Query"], "-"))
+            lines.append(f"| {query} | {' | '.join(values)} |")
         return "\n".join(lines)
 
     def _build_dataset_section(self, dataset: str) -> str:
         """Build results tables for a single dataset."""
         summary = self.summaries[dataset]
         lines = [f"### {dataset.capitalize()}\n"]
-        lines.append(self._build_markdown_table(summary))
+        lines.append(self._build_markdown_table(summary, dataset=dataset))
         lines.append("")
         return "\n".join(lines)
 
@@ -450,7 +486,9 @@ class ReportGenerator:
             for dataset in sorted(datasets_data):
                 rows = datasets_data[dataset]
                 section_lines.append(f"**{dataset.capitalize()}:**\n")
-                section_lines.append(self._build_markdown_table(rows))
+                section_lines.append(
+                    self._build_markdown_table(rows, dataset=dataset)
+                )
                 section_lines.append("")
 
             sections.append("\n".join(section_lines))
@@ -546,6 +584,64 @@ class ReportGenerator:
         lines.append("</details>")
         return "\n".join(lines)
 
+    def _patch_delta_columns(self, content: str) -> str:
+        """
+        Append a 'Δ TuringDB' column to every markdown result table in content,
+        without touching any other column values.
+
+        For each table row whose query has a delta value, appends the delta to
+        the end of the row. Header rows get a 'Δ TuringDB' header appended.
+        Separator rows get an extra '------' cell appended.
+        Rows with no matching delta get a '-' cell appended.
+        """
+        # Flatten deltas across all datasets: {query: delta_str}
+        all_deltas: dict[str, str] = {}
+        for dataset_deltas in self._deltas.values():
+            all_deltas.update(dataset_deltas)
+
+        if not all_deltas:
+            return content
+
+        output_lines = []
+        in_result_table = False
+
+        for line in content.splitlines():
+            # Detect result table header: must contain Query and TuringDB columns
+            if "|" in line:
+                parts = [p.strip() for p in line.split("|")]
+                lower = [p.lower() for p in parts]
+
+                if "query" in lower and "turingdb" in lower and "Δ TuringDB" not in line:
+                    # Header row — append delta column header
+                    output_lines.append(line.rstrip(" |") + " | Δ TuringDB |")
+                    in_result_table = True
+                    continue
+
+                if in_result_table:
+                    # Separator row e.g. |-------|------|
+                    if re.match(r"^\|[-| :]+\|$", line.strip()):
+                        output_lines.append(line.rstrip(" |") + "|--------|")
+                        continue
+
+                    # Data row: query is first non-empty cell, stripped of backticks
+                    non_empty = [p for p in parts if p]
+                    if non_empty:
+                        query = non_empty[0].strip("`")
+                        if query.lower().startswith(("match", "create")):
+                            delta = all_deltas.get(query, "-")
+                            output_lines.append(line.rstrip(" |") + f" | {delta} |")
+                            continue
+
+                    # Any other line ends the table context
+                    in_result_table = False
+
+            else:
+                in_result_table = False
+
+            output_lines.append(line)
+
+        return "\n".join(output_lines)
+
     def _replace_section(self, content: str, marker: str, replacement: str) -> str:
         """Replace content between <!-- MARKER --> and <!-- /MARKER --> tags."""
         pattern = f"(<!-- {marker} -->).*?(<!-- /{marker} -->)"
@@ -601,13 +697,27 @@ class ReportGenerator:
         return content
 
     def save(self, output_path: Path) -> None:
-        """Generate and write report to file."""
+        """Generate and write report to file, then patch in regression deltas."""
         content = self.generate()
         if not content:
             return
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content)
         logger.info(f"Report saved to {output_path}")
+
+        # Compute regression deltas now that today's report is written, so
+        # _extract_turingdb_runtimes() reads fresh data and historical reports
+        # are the strictly older files alongside it.
+        self._compute_regression_deltas(output_path)
+        if not self._deltas:
+            return
+
+        # Patch delta column into the already-written report in-place.
+        # We only append to existing table rows — no other content is touched.
+        content = output_path.read_text()
+        content = self._patch_delta_columns(content)
+        output_path.write_text(content)
+        logger.info(f"Report updated with regression deltas at {output_path}")
 
 
 def _collect_machine_specs() -> dict[str, str]:
