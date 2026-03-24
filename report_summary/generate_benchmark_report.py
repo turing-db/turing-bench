@@ -148,10 +148,10 @@ class ReportGenerator:
         self._deltas: dict[str, dict[str, str]] = {}
 
     def _discover_reports(self) -> dict[str, Path]:
-        """Find {dataset}_raw_benchmark.txt files in reports_dir."""
+        """Find {dataset}_raw_benchmark*.txt files in reports_dir."""
         reports = {}
-        for path in sorted(self.reports_dir.glob("*_raw_benchmark.txt")):
-            dataset = path.stem.replace("_raw_benchmark", "")
+        for path in sorted(self.reports_dir.glob("*_raw_benchmark*.txt")):
+            dataset = path.name.split("_raw_benchmark")[0]
             reports[dataset] = path
         if not reports:
             logger.warning(f"No benchmark reports found in {self.reports_dir}")
