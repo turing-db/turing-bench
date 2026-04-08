@@ -41,3 +41,13 @@ function elapsed() {
     runtime=$((end-start))
     echo "$runtime sec"
 }
+
+function measure_time() {
+    /usr/bin/time -v -o /tmp/time_output.txt "$@"
+}
+
+function get_mem_and_time() {
+    mem=$(grep 'Maximum resident set size (kbytes)' /tmp/time_output.txt | awk '{print $6}')
+    utime=$(grep 'User time (seconds)' /tmp/time_output.txt | awk '{print $4}')
+    echo "($mem KB, $utime sec)"
+}

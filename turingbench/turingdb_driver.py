@@ -5,6 +5,7 @@ import argparse
 from typing import List, Dict, Any, cast
 
 from .abstract_driver import AbstractDriver
+from .memory_sampler import find_server_pid
 
 from turingdb import TuringDB
 
@@ -64,6 +65,7 @@ def main(args: argparse.Namespace) -> None:
 
     try:
         driver.connect(url=args.url, database=args.database)
+        driver.server_pid = find_server_pid("turingdb")
 
         # Load queries from file
         with open(args.query, "r") as f:

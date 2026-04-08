@@ -38,13 +38,12 @@ fi
 
 # Load in neo4j
 echo "Loading $DATASET dump into Neo4j..."
-cat $DUMP_PATH | neo4j-admin database load --from-stdin neo4j --overwrite-destination=true
-echo "$DATASET successfully loaded in Neo4j."
+cat $DUMP_PATH | measure_time neo4j-admin database load --from-stdin neo4j --overwrite-destination=true > /dev/null 2>&1
+echo "- $DATASET successfully loaded in Neo4j $(get_mem_and_time)."
 
 # Migrate from neo4j v4 to v5
-neo4j-admin database migrate neo4j --verbose --force-btree-indexes-to-range
-echo "Migration from Neo4j v4 to v5 done."
-
+measure_time neo4j-admin database migrate neo4j --verbose --force-btree-indexes-to-range > /dev/null 2>&1
+echo "- Migration from Neo4j v4 to v5 done $(get_mem_and_time)."
 mkdir -p $DUMPS || true
 cp -r "$NEO4J_DATA_DIR" "$SAVE_PATH"
 echo "$DATASET dump successfully stored in $SAVE_PATH directory."
