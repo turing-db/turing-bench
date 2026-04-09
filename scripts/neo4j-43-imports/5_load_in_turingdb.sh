@@ -23,8 +23,10 @@ echo "- Loading $DATASET jsonl into turingdb..."
 mkdir -p $SAVE_PATH/data
 cp "$JSON_FILE" "$SAVE_PATH/data/output.json"
 
+GRAPH_NAME=$(sed 's/-/_/g' <<< $DATASET)
+
 start=$(date +%s)
-echo "LOAD JSONL 'output.json' AS $DATASET;" | uv run turingdb -turing-dir $SAVE_PATH -p 6667
+echo "LOAD JSONL 'output.json' AS $GRAPH_NAME;" | uv run turingdb -turing-dir $SAVE_PATH -p 6667
 echo "- Loading $DATASET jsonl into turingdb took $(elapsed $start)"
 rm "$SAVE_PATH/data/output.json"
 
